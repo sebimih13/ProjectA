@@ -60,6 +60,9 @@ protected:
 	void StartAiming();
 	void StopAiming();
 
+	/** Called for fire weapon */
+	void FireWeapon();
+
 	/** Switch Weapons */
 	void SetDefaultOverlay();
 	void SetRifleOverlay();
@@ -77,6 +80,10 @@ private:
 	/** Follow Camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
+
+	/** Skeletal Mesh Component for weapon slot */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* WeaponMesh;
 
 private:
 	/** References */
@@ -101,6 +108,9 @@ private:
 	/** Rotation System */
 	FRotator TargetRotation = FRotator::ZeroRotator;
 
+	/** Is character aiming / is Aim Button pressed */
+	bool bIsAiming = false;
+
 	/** Cached Variables */
 	FVector PreviousVelocity = FVector::ZeroVector;
 	float PreviousAimYawRate = 0.0f;
@@ -118,7 +128,13 @@ public:
 	float CameraZoomFOV = 60.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Camera")
-	float CameraZoomInterpSpeed = 20.0f;
+	float CameraDefaultFOV = 90.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Camera")
+	float CameraFOVInterpSpeed = 10.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Camera")
+	float CameraLocationInterpSpeed = 20.0f;
 
 	/** Movement */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Movement")
@@ -130,6 +146,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Movement")
 	float SprintSpeed = 650.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapons")
+	USkeletalMesh* PistolMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapons")
+	USkeletalMesh* RifleMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapons")
+	UAnimationAsset* PistolFire;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapons")
+	UAnimationAsset* RifleFire;
+
 private:
 	/** Calculate Functions */
 	float CalculateGroundedRotationRate() const;
@@ -137,16 +165,11 @@ private:
 	/** Update Functions */
 	void UpdateGroundedRotation(float DeltaTime);
 	void UpdateCharacterInformations(float DeltaTime);
+	void UpdateCharacterCamera(float DeltaTime);
 
 	/** Utility Functions */
 	void SmoothCharacterRotation(FRotator Target, float TargetInterpSpeed, float ActorInterpSpeed, float DeltaTime);
 	void LimitRotation(float AimYawMin, float AimYawMax, float InterpSpeed, float DeltaTime);
-
-	/** Is character aiming / is Aim Button pressed */
-	bool bIsAiming = false;
-
-	float CameraDefaultFOV = 0.0f;
-	float CameraCurrentFOV = 0.0f;
 
 public:
 	/** FORCEINLINE Setters / Getters */

@@ -196,9 +196,7 @@ void UBaseCharacterAnimInstance::UpdateAimingValues(float DeltaSeconds)
 	SpineRotation.Pitch = 0.0f;
 	SpineRotation.Yaw = AimingAngle.X / 4.0f;
 
-	LeftYawTime = FMath::GetMappedRangeValueClamped(FVector2D(0.0f, 180.0f), FVector2D(0.5f, 0.0f), FMath::Abs(SmoothedAimingAngle.X));
-	RightYawTime = FMath::GetMappedRangeValueClamped(FVector2D(0.0f, 180.0f), FVector2D(0.5f, 1.0f), FMath::Abs(SmoothedAimingAngle.X));;
-	ForwardYawTime = FMath::GetMappedRangeValueClamped(FVector2D(-180.0f, 180.0f), FVector2D(0.0f, 1.0f), FMath::Abs(SmoothedAimingAngle.X));;
+	HeadYawTime = FMath::GetMappedRangeValueClamped(FVector2D(-90.0f, 90.0f), FVector2D(0.0f, 1.0f), SmoothedAimingAngle.X);
 }
 
 void UBaseCharacterAnimInstance::UpdateMovementValues(float DeltaSeconds)

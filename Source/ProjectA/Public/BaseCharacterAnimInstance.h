@@ -158,16 +158,16 @@ public:
 	float AimSweepTime = 0.0f;
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement|RotateInPlace")
-	float LeftYawTime = 0.0f;
-
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement|RotateInPlace")
-	float RightYawTime = 0.0f;
-
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement|RotateInPlace")
-	float ForwardYawTime = 0.0f;
+	float HeadYawTime = 0.0f;
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement|RotateInPlace")
 	float RotateRate = 0.0f;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement|RotateInPlace")
+	FRotator SpineRotation = FRotator::ZeroRotator;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement|RotateInPlace")
+	FVector2D SmoothedAimingAngle = FVector2D::ZeroVector;
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement|Layers")
 	float BasePoseN = 0.0f;
@@ -235,12 +235,8 @@ private:
 	float YawDelta = 0.0f;
 
 	/** Rotate in place system */
-	FRotator SmoothedAimingRotation = FRotator::ZeroRotator;
 	FVector2D AimingAngle = FVector2D::ZeroVector;
-	FVector2D SmoothedAimingAngle = FVector2D::ZeroVector;
-
-	// TODO: DELETE
-	FRotator SpineRotation = FRotator::ZeroRotator;
+	FRotator SmoothedAimingRotation = FRotator::ZeroRotator;
 
 private:
 	/** Calculate Functions */

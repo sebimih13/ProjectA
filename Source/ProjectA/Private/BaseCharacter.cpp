@@ -8,6 +8,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "BaseCharacterAnimInstance.h"
 
+// TODO : debug
+#include "DrawDebugHelpers.h"
+
 // Sets default values
 ABaseCharacter::ABaseCharacter()
 {
@@ -18,13 +21,18 @@ ABaseCharacter::ABaseCharacter()
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(GetRootComponent());
 	CameraBoom->bUsePawnControlRotation = true;
-	CameraBoom->TargetArmLength = 300.f;
-	CameraBoom->SocketOffset = FVector(0.0f, 50.0f, 50.0f);
+	CameraBoom->TargetArmLength = 200.f;
+	CameraBoom->SocketOffset = FVector(0.0f, 40.0f, 0.0f);
 
 	// Create Follow Camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
+	FollowCamera->FieldOfView = CameraDefaultFOV;
+
+	// Create weapon skeletal mesh
+	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
+	WeaponMesh->SetupAttachment(GetMesh());
 
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
@@ -46,13 +54,9 @@ void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	MainAnimInstance = Cast<UBaseCharacterAnimInstance>(GetMesh()->GetAnimInstance());
+	WeaponMesh->AttachTo(GetMesh(), FName("weapon_slot_r"));
 
-	if (FollowCamera)
-	{
-		CameraDefaultFOV = GetFollowCamera()->FieldOfView;
-		CameraCurrentFOV = CameraDefaultFOV;
-	}
+	MainAnimInstance = Cast<UBaseCharacterAnimInstance>(GetMesh()->GetAnimInstance());
 }
 
 // Called every frame
@@ -65,18 +69,7 @@ void ABaseCharacter::Tick(float DeltaTime)
 	if (MainAnimInstance->GetMovementState() == EMovementState::Grounded)
 	{
 		UpdateGroundedRotation(DeltaTime);
-
-		// TODO : Move
-		if (GetIsAiming())
-		{
-			MainAnimInstance->SetShouldSprint(false);
-			CameraCurrentFOV = FMath::FInterpTo(CameraCurrentFOV, CameraZoomFOV, DeltaTime, CameraZoomInterpSpeed);
-		}
-		else
-		{
-			CameraCurrentFOV = FMath::FInterpTo(CameraCurrentFOV, CameraDefaultFOV, DeltaTime, CameraZoomInterpSpeed);
-		}
-		GetFollowCamera()->SetFieldOfView(CameraCurrentFOV);
+		UpdateCharacterCamera(DeltaTime);
 	}
 	
 	// TODO
@@ -106,6 +99,8 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
 	PlayerInputComponent->BindAction("Aim", IE_Pressed, this, &ABaseCharacter::StartAiming);
 	PlayerInputComponent->BindAction("Aim", IE_Released, this, &ABaseCharacter::StopAiming);
+
+	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ABaseCharacter::FireWeapon);
 
 	// TODO: Overlay
 	PlayerInputComponent->BindAction("Default", IE_Pressed, this, &ABaseCharacter::SetDefaultOverlay);
@@ -168,11 +163,81 @@ void ABaseCharacter::StopSprint()
 void ABaseCharacter::StartAiming()
 {
 	SetIsAiming(true);
+
+	// TODO : investigate
+	// GetMesh()->SetRelativeRotation(FRotator(0.0f, -80.0f, 0.0f));
 }
 
 void ABaseCharacter::StopAiming()
 {
 	SetIsAiming(false);
+
+	// TODO : investigate
+	// GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+}
+
+void ABaseCharacter::FireWeapon()
+{
+	if (!GetIsAiming()) return;
+
+	// Get viewport size
+	FVector2D ViewportSize;
+	if (GEngine && GEngine->GameViewport)
+	{
+		GEngine->GameViewport->GetViewportSize(ViewportSize);
+	}
+
+	// Get crosshair location
+	FVector2D CrosshairLocation = FVector2D(ViewportSize.X / 2.0f, ViewportSize.Y / 2.0f);
+	FVector CrosshairWorldPosition, CrosshairWorldDirection;
+	bool bScreenToWorld = UGameplayStatics::DeprojectScreenToWorld(UGameplayStatics::GetPlayerController(this, 0), CrosshairLocation, CrosshairWorldPosition, CrosshairWorldDirection);
+
+	// Perfom line trace
+	if (bScreenToWorld)
+	{
+		FHitResult ScreenTraceHit;
+		const FVector Start = CrosshairWorldPosition;
+		const FVector End = CrosshairWorldPosition + CrosshairWorldDirection * 50000.0f;
+		GetWorld()->LineTraceSingleByChannel(ScreenTraceHit, Start, End, ECollisionChannel::ECC_Visibility);
+
+		if (ScreenTraceHit.bBlockingHit)
+		{
+			DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 2.0f);
+			DrawDebugPoint(GetWorld(), ScreenTraceHit.Location, 5.0f, FColor::Red, false, 2.0f);
+		}
+	}
+
+	// Play weapon animation
+	switch (MainAnimInstance->GetOverlayState())
+	{
+	case EOverlayState::Pistol1H: WeaponMesh->PlayAnimation(PistolFire, false); break;
+	case EOverlayState::Pistol2H: WeaponMesh->PlayAnimation(PistolFire, false); break;
+	case EOverlayState::Rifle:	  WeaponMesh->PlayAnimation(RifleFire, false); break;
+	}
+}
+
+void ABaseCharacter::SetDefaultOverlay()
+{
+	WeaponMesh->SetSkeletalMesh(nullptr);
+	MainAnimInstance->SetOverlayState(EOverlayState::Default);
+}
+
+void ABaseCharacter::SetRifleOverlay()
+{
+	MainAnimInstance->SetOverlayState(EOverlayState::Rifle);
+	WeaponMesh->SetSkeletalMesh(RifleMesh);
+}
+
+void ABaseCharacter::SetPistol1HOverlay()
+{
+	MainAnimInstance->SetOverlayState(EOverlayState::Pistol1H);
+	WeaponMesh->SetSkeletalMesh(PistolMesh);
+}
+
+void ABaseCharacter::SetPistol2HOverlay()
+{
+	MainAnimInstance->SetOverlayState(EOverlayState::Pistol2H);
+	WeaponMesh->SetSkeletalMesh(PistolMesh);
 }
 
 void ABaseCharacter::SwitchInput(FKey Key)
@@ -193,26 +258,6 @@ void ABaseCharacter::SwitchInput(FKey Key)
 		}
 		SetInputType(EInputType::KeyboardMouse);
 	}
-}
-
-void ABaseCharacter::SetDefaultOverlay()
-{
-	MainAnimInstance->SetOverlayState(EOverlayState::Default);
-}
-
-void ABaseCharacter::SetRifleOverlay()
-{
-	MainAnimInstance->SetOverlayState(EOverlayState::Rifle);
-}
-
-void ABaseCharacter::SetPistol1HOverlay()
-{
-	MainAnimInstance->SetOverlayState(EOverlayState::Pistol1H);
-}
-
-void ABaseCharacter::SetPistol2HOverlay()
-{
-	MainAnimInstance->SetOverlayState(EOverlayState::Pistol2H);
 }
 
 // Calculate Functions
@@ -305,5 +350,29 @@ void ABaseCharacter::UpdateCharacterInformations(float DeltaTime)
 	// TODO : Add interp AimingRotation to current control rotation for smooth character rotation movement
 	// Aim Yaw
 	AimYawRate = FMath::Abs((GetControlRotation().Yaw - PreviousAimYawRate) / DeltaTime);
+}
+
+void ABaseCharacter::UpdateCharacterCamera(float DeltaTime)
+{
+	if (GetIsAiming())
+	{
+		MainAnimInstance->SetShouldSprint(false);
+
+		if (WeaponMesh->DoesSocketExist(FName("Aim")))
+		{
+			GetCameraBoom()->SetRelativeLocation(FMath::VInterpTo(GetCameraBoom()->GetRelativeLocation(), WeaponMesh->GetSocketTransform(FName("Aim"), ERelativeTransformSpace::RTS_Actor).GetLocation(), DeltaTime, CameraLocationInterpSpeed));
+			GetFollowCamera()->FieldOfView = FMath::FInterpTo(GetFollowCamera()->FieldOfView, CameraDefaultFOV, DeltaTime, CameraFOVInterpSpeed);
+		}
+		else
+		{
+			GetCameraBoom()->SetRelativeLocation(FMath::VInterpTo(GetCameraBoom()->GetRelativeLocation(), FVector(0.0f, 0.0f, 70.0f), DeltaTime, CameraLocationInterpSpeed));
+			GetFollowCamera()->FieldOfView = FMath::FInterpTo(GetFollowCamera()->FieldOfView, CameraZoomFOV, DeltaTime, CameraFOVInterpSpeed);
+		}
+	}
+	else
+	{
+		GetCameraBoom()->SetRelativeLocation(FMath::VInterpTo(GetCameraBoom()->GetRelativeLocation(), FVector(0.0f, 0.0f, 70.0f), DeltaTime, CameraLocationInterpSpeed));
+		GetFollowCamera()->FieldOfView = FMath::FInterpTo(GetFollowCamera()->FieldOfView, CameraDefaultFOV, DeltaTime, CameraFOVInterpSpeed);
+	}
 }
 
