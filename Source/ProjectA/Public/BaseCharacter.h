@@ -158,6 +158,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapons")
 	UAnimationAsset* RifleFire;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapons")
+	UAnimMontage* HipFireMontage;
+
+	/** Particles spawned upon bullet impact */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapons")
+	UParticleSystem* ImpactParticles;
+
+	/** Trail for bullets */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapons")
+	UParticleSystem* BeamParticles;
+
 private:
 	/** Calculate Functions */
 	float CalculateGroundedRotationRate() const;

@@ -7,6 +7,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "BaseCharacterAnimInstance.h"
+#include "Particles/ParticleSystemComponent.h"
 
 // TODO : debug
 #include "DrawDebugHelpers.h"
@@ -178,7 +179,7 @@ void ABaseCharacter::StopAiming()
 
 void ABaseCharacter::FireWeapon()
 {
-	if (!GetIsAiming()) return;
+	if (!GetIsAiming() || MainAnimInstance->GetOverlayState() == EOverlayState::Default) return;
 
 	// Get viewport size
 	FVector2D ViewportSize;
@@ -198,12 +199,22 @@ void ABaseCharacter::FireWeapon()
 		FHitResult ScreenTraceHit;
 		const FVector Start = CrosshairWorldPosition;
 		const FVector End = CrosshairWorldPosition + CrosshairWorldDirection * 50000.0f;
+		FVector BeamEndPoint = End;
 		GetWorld()->LineTraceSingleByChannel(ScreenTraceHit, Start, End, ECollisionChannel::ECC_Visibility);
 
 		if (ScreenTraceHit.bBlockingHit)
 		{
 			DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 2.0f);
 			DrawDebugPoint(GetWorld(), ScreenTraceHit.Location, 5.0f, FColor::Red, false, 2.0f);
+
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, ScreenTraceHit.Location);
+			BeamEndPoint = ScreenTraceHit.Location;
+		}
+
+		UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BeamParticles, WeaponMesh->GetSocketTransform(FName("MuzzleFlash")));
+		if (Beam)
+		{
+			Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
 		}
 	}
 
@@ -211,9 +222,13 @@ void ABaseCharacter::FireWeapon()
 	switch (MainAnimInstance->GetOverlayState())
 	{
 	case EOverlayState::Pistol1H: WeaponMesh->PlayAnimation(PistolFire, false); break;
-	case EOverlayState::Pistol2H: WeaponMesh->PlayAnimation(PistolFire, false); break;
-	case EOverlayState::Rifle:	  WeaponMesh->PlayAnimation(RifleFire, false); break;
+	case EOverlayState::Pistol2H: WeaponMesh->PlayAnimation(PistolFire, false);	break;				
+	case EOverlayState::Rifle:	  WeaponMesh->PlayAnimation(RifleFire, false);	break;
 	}
+
+	// TODO : Play hipfire animation
+	MainAnimInstance->Montage_Play(HipFireMontage);
+	MainAnimInstance->Montage_JumpToSection(FName("StartFire"));
 }
 
 void ABaseCharacter::SetDefaultOverlay()
