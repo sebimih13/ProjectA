@@ -60,8 +60,9 @@ protected:
 	void StartAiming();
 	void StopAiming();
 
-	/** Called for fire weapon */
-	void FireWeapon();
+	/** Called for firing the weapon */
+	void FireButtonPressed();
+	void FireButtonReleased();
 
 	/** Switch Weapons */
 	void SetDefaultOverlay();
@@ -110,6 +111,17 @@ private:
 
 	/** Is character aiming / is Aim Button pressed */
 	bool bIsAiming = false;
+
+	/** Crosshair Firing */
+	bool bIsFiringBullet = false;
+	float ShootTimeDuration = 0.05f;
+	FTimerHandle CrosshairShootTimer;
+
+	/** Automatic Fire */
+	bool bFireButtonPressed = false;
+	bool bShouldFire = true;
+	float AutomaticFireRate = 0.1f;
+	FTimerHandle AutomaticFireTimer;
 
 	/** Cached Variables */
 	FVector PreviousVelocity = FVector::ZeroVector;
@@ -182,28 +194,39 @@ private:
 	void SmoothCharacterRotation(FRotator Target, float TargetInterpSpeed, float ActorInterpSpeed, float DeltaTime);
 	void LimitRotation(float AimYawMin, float AimYawMax, float InterpSpeed, float DeltaTime);
 
+	/** Sets the bFiringBullet to true/false */
+	void StartCrosshairBulletFire();
+	void FinishCrosshairBulletFire();
+
+	/** Fire the weapon */
+	void FireWeapon();
+	void StartFireTimer();
+	void AutomaticFireReset();
+
 public:
 	/** FORCEINLINE Setters / Getters */
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; };
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; };
 
-	FORCEINLINE EInputType GetInputType() { return InputType; };
+	FORCEINLINE EInputType GetInputType() const { return InputType; };
 	FORCEINLINE void SetInputType(EInputType Type) { InputType = Type; };
 
-	FORCEINLINE bool GetIsMoving() { return bIsMoving; };
+	FORCEINLINE bool GetIsMoving() const { return bIsMoving; };
 	FORCEINLINE void SetIsMoving(bool State) { bIsMoving = State; };
 
-	FORCEINLINE bool GetHasMovementInput() { return bHasMovementInput; };
+	FORCEINLINE bool GetHasMovementInput() const { return bHasMovementInput; };
 	FORCEINLINE void SetHasMovementInput(bool State) { bHasMovementInput = State; };
 
-	FORCEINLINE float GetSpeed() { return Speed; };
+	FORCEINLINE float GetSpeed() const { return Speed; };
 	FORCEINLINE void SetSpeed(float Value) { Speed = Value; };
 
-	FORCEINLINE FVector GetAcceleration() { return Acceleration; };
+	FORCEINLINE FVector GetAcceleration() const { return Acceleration; };
 
-	FORCEINLINE bool GetIsAiming() { return bIsAiming; };
+	FORCEINLINE bool GetIsAiming() const { return bIsAiming; };
 	FORCEINLINE void SetIsAiming(bool State) { bIsAiming = State; };
 
-	FORCEINLINE float GetAimYawRate() { return AimYawRate; };
+	FORCEINLINE bool GetIsFiringBullet() const { return bIsFiringBullet; };
+
+	FORCEINLINE float GetAimYawRate() const { return AimYawRate; };
 };
 

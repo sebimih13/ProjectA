@@ -7,7 +7,7 @@
 #include "BaseCharacterHUD.generated.h"
 
 /** Forward Declarations */
-
+class ABaseCharacter;
 
 UCLASS()
 class PROJECTA_API ABaseCharacterHUD : public AHUD
@@ -28,8 +28,40 @@ public:
 	
 	virtual void DrawHUD() override;
 
+private:
+	/** References */
+	ABaseCharacter* Character;
+
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration")
-	UTexture* CrosshairTexture;
+	UTexture* CrosshairTop;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration")
+	UTexture* CrosshairBottom;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration")
+	UTexture* CrosshairRight;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration")
+	UTexture* CrosshairLeft;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration")
+	float CrosshairSpreadMax = 16.0f;
+
+	/** Determines the spread of the crosshair */
+	float CrosshairSpreadMultiplier = 0.0f;
+
+	/** Components for crosshair spread */
+	float CrosshairVelocityFactor = 0.0f;
+	float CrosshairInAirFactor = 0.0f;
+	float CrosshairAimFactor = 0.0f;
+	float CrosshairShootingFactor = 0.0f;
+
+private:
+	FVector2D CrosshairCenter;
+
+private:
+	/** Calculate functions */
+	void CalculateCrosshairSpread(float DeltaTime);
 };
 

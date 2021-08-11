@@ -101,15 +101,19 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	PlayerInputComponent->BindAction("Aim", IE_Pressed, this, &ABaseCharacter::StartAiming);
 	PlayerInputComponent->BindAction("Aim", IE_Released, this, &ABaseCharacter::StopAiming);
 
-	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ABaseCharacter::FireWeapon);
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+
+	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ABaseCharacter::FireButtonPressed);
+	PlayerInputComponent->BindAction("Fire", IE_Released, this, &ABaseCharacter::FireButtonReleased);
+
+	PlayerInputComponent->BindAction("SwitchInput", IE_Pressed, this, &ABaseCharacter::SwitchInput);
 
 	// TODO: Overlay
 	PlayerInputComponent->BindAction("Default", IE_Pressed, this, &ABaseCharacter::SetDefaultOverlay);
 	PlayerInputComponent->BindAction("Rifle", IE_Pressed, this, &ABaseCharacter::SetRifleOverlay);
 	PlayerInputComponent->BindAction("Pistol1H", IE_Pressed, this, &ABaseCharacter::SetPistol1HOverlay);
 	PlayerInputComponent->BindAction("Pistol2H", IE_Pressed, this, &ABaseCharacter::SetPistol2HOverlay);
-
-	PlayerInputComponent->BindAction("SwitchInput", IE_Pressed, this, &ABaseCharacter::SwitchInput);
 }
 
 void ABaseCharacter::MoveForward(float Value)
@@ -177,58 +181,23 @@ void ABaseCharacter::StopAiming()
 	// GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
 }
 
-void ABaseCharacter::FireWeapon()
+void ABaseCharacter::FireButtonPressed()
 {
-	if (!GetIsAiming() || MainAnimInstance->GetOverlayState() == EOverlayState::Default) return;
+	bFireButtonPressed = true;
 
-	// Get viewport size
-	FVector2D ViewportSize;
-	if (GEngine && GEngine->GameViewport)
+	if (MainAnimInstance->GetOverlayState() == EOverlayState::Rifle)
 	{
-		GEngine->GameViewport->GetViewportSize(ViewportSize);
+		StartFireTimer();
 	}
-
-	// Get crosshair location
-	FVector2D CrosshairLocation = FVector2D(ViewportSize.X / 2.0f, ViewportSize.Y / 2.0f);
-	FVector CrosshairWorldPosition, CrosshairWorldDirection;
-	bool bScreenToWorld = UGameplayStatics::DeprojectScreenToWorld(UGameplayStatics::GetPlayerController(this, 0), CrosshairLocation, CrosshairWorldPosition, CrosshairWorldDirection);
-
-	// Perfom line trace
-	if (bScreenToWorld)
+	else
 	{
-		FHitResult ScreenTraceHit;
-		const FVector Start = CrosshairWorldPosition;
-		const FVector End = CrosshairWorldPosition + CrosshairWorldDirection * 50000.0f;
-		FVector BeamEndPoint = End;
-		GetWorld()->LineTraceSingleByChannel(ScreenTraceHit, Start, End, ECollisionChannel::ECC_Visibility);
-
-		if (ScreenTraceHit.bBlockingHit)
-		{
-			DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 2.0f);
-			DrawDebugPoint(GetWorld(), ScreenTraceHit.Location, 5.0f, FColor::Red, false, 2.0f);
-
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, ScreenTraceHit.Location);
-			BeamEndPoint = ScreenTraceHit.Location;
-		}
-
-		UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BeamParticles, WeaponMesh->GetSocketTransform(FName("MuzzleFlash")));
-		if (Beam)
-		{
-			Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
-		}
+		FireWeapon();
 	}
+}
 
-	// Play weapon animation
-	switch (MainAnimInstance->GetOverlayState())
-	{
-	case EOverlayState::Pistol1H: WeaponMesh->PlayAnimation(PistolFire, false); break;
-	case EOverlayState::Pistol2H: WeaponMesh->PlayAnimation(PistolFire, false);	break;				
-	case EOverlayState::Rifle:	  WeaponMesh->PlayAnimation(RifleFire, false);	break;
-	}
-
-	// TODO : Play hipfire animation
-	MainAnimInstance->Montage_Play(HipFireMontage);
-	MainAnimInstance->Montage_JumpToSection(FName("StartFire"));
+void ABaseCharacter::FireButtonReleased()
+{
+	bFireButtonPressed = false;
 }
 
 void ABaseCharacter::SetDefaultOverlay()
@@ -280,23 +249,6 @@ float ABaseCharacter::CalculateGroundedRotationRate() const
 {
 	// TODO
 	return 5.0f;
-}
-
-// Utility Functions
-void ABaseCharacter::SmoothCharacterRotation(FRotator Target, float TargetInterpSpeed, float ActorInterpSpeed, float DeltaTime)
-{
-	TargetRotation = FMath::RInterpConstantTo(TargetRotation, Target, DeltaTime, TargetInterpSpeed);
-	SetActorRotation(FMath::RInterpTo(GetActorRotation(), TargetRotation, DeltaTime, ActorInterpSpeed));
-}
-
-void ABaseCharacter::LimitRotation(float AimYawMin, float AimYawMax, float InterpSpeed, float DeltaTime)
-{
-	FRotator Delta = UKismetMathLibrary::NormalizedDeltaRotator(GetControlRotation(), GetActorRotation());
-	if (AimYawMax < Delta.Yaw || Delta.Yaw < AimYawMin)
-	{
-		const float TargetYaw = GetControlRotation().Yaw + (Delta.Yaw > 0.0f ? AimYawMin : AimYawMax);
-		SmoothCharacterRotation(FRotator(0.0f, TargetYaw, 0.0f), 0.0f, InterpSpeed, DeltaTime);
-	}
 }
 
 // Update Functions
@@ -388,6 +340,112 @@ void ABaseCharacter::UpdateCharacterCamera(float DeltaTime)
 	{
 		GetCameraBoom()->SetRelativeLocation(FMath::VInterpTo(GetCameraBoom()->GetRelativeLocation(), FVector(0.0f, 0.0f, 70.0f), DeltaTime, CameraLocationInterpSpeed));
 		GetFollowCamera()->FieldOfView = FMath::FInterpTo(GetFollowCamera()->FieldOfView, CameraDefaultFOV, DeltaTime, CameraFOVInterpSpeed);
+	}
+}
+
+// Utility Functions
+void ABaseCharacter::SmoothCharacterRotation(FRotator Target, float TargetInterpSpeed, float ActorInterpSpeed, float DeltaTime)
+{
+	TargetRotation = FMath::RInterpConstantTo(TargetRotation, Target, DeltaTime, TargetInterpSpeed);
+	SetActorRotation(FMath::RInterpTo(GetActorRotation(), TargetRotation, DeltaTime, ActorInterpSpeed));
+}
+
+void ABaseCharacter::LimitRotation(float AimYawMin, float AimYawMax, float InterpSpeed, float DeltaTime)
+{
+	FRotator Delta = UKismetMathLibrary::NormalizedDeltaRotator(GetControlRotation(), GetActorRotation());
+	if (AimYawMax < Delta.Yaw || Delta.Yaw < AimYawMin)
+	{
+		const float TargetYaw = GetControlRotation().Yaw + (Delta.Yaw > 0.0f ? AimYawMin : AimYawMax);
+		SmoothCharacterRotation(FRotator(0.0f, TargetYaw, 0.0f), 0.0f, InterpSpeed, DeltaTime);
+	}
+}
+
+void ABaseCharacter::StartCrosshairBulletFire()
+{
+	bIsFiringBullet = true;
+	GetWorldTimerManager().SetTimer(CrosshairShootTimer, this, &ABaseCharacter::FinishCrosshairBulletFire, ShootTimeDuration);
+}
+
+void ABaseCharacter::FinishCrosshairBulletFire()
+{
+	bIsFiringBullet = false;
+	GetWorldTimerManager().ClearTimer(CrosshairShootTimer);
+}
+
+void ABaseCharacter::FireWeapon()
+{
+	if (!GetIsAiming() || MainAnimInstance->GetOverlayState() == EOverlayState::Default) return;
+
+	// Get viewport size
+	FVector2D ViewportSize;
+	if (GEngine && GEngine->GameViewport)
+	{
+		GEngine->GameViewport->GetViewportSize(ViewportSize);
+	}
+
+	// Get crosshair location
+	FVector2D CrosshairLocation = FVector2D(ViewportSize.X / 2.0f, ViewportSize.Y / 2.0f);
+	FVector CrosshairWorldPosition, CrosshairWorldDirection;
+	bool bScreenToWorld = UGameplayStatics::DeprojectScreenToWorld(UGameplayStatics::GetPlayerController(this, 0), CrosshairLocation, CrosshairWorldPosition, CrosshairWorldDirection);
+
+	// Perfom line trace
+	if (bScreenToWorld)
+	{
+		FHitResult ScreenTraceHit;
+		const FVector Start = CrosshairWorldPosition;
+		const FVector End = CrosshairWorldPosition + CrosshairWorldDirection * 50000.0f;
+		FVector BeamEndPoint = End;
+		GetWorld()->LineTraceSingleByChannel(ScreenTraceHit, Start, End, ECollisionChannel::ECC_Visibility);
+
+		if (ScreenTraceHit.bBlockingHit)
+		{
+			DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 2.0f);
+			DrawDebugPoint(GetWorld(), ScreenTraceHit.Location, 5.0f, FColor::Red, false, 2.0f);
+
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, ScreenTraceHit.Location);
+			BeamEndPoint = ScreenTraceHit.Location;
+		}
+
+		UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BeamParticles, WeaponMesh->GetSocketTransform(FName("MuzzleFlash")));
+		if (Beam)
+		{
+			Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
+		}
+	}
+
+	// Play weapon animation
+	switch (MainAnimInstance->GetOverlayState())
+	{
+	case EOverlayState::Pistol1H: WeaponMesh->PlayAnimation(PistolFire, false); break;
+	case EOverlayState::Pistol2H: WeaponMesh->PlayAnimation(PistolFire, false);	break;
+	case EOverlayState::Rifle:	  WeaponMesh->PlayAnimation(RifleFire, false);	break;
+	}
+
+	// TODO : Play hipfire animation
+	MainAnimInstance->Montage_Play(HipFireMontage);
+	MainAnimInstance->Montage_JumpToSection(FName("StartFire"));
+
+	StartCrosshairBulletFire();
+}
+
+void ABaseCharacter::StartFireTimer()
+{
+	if (bShouldFire)
+	{
+		FireWeapon();
+		bShouldFire = false;
+		GetWorldTimerManager().SetTimer(AutomaticFireTimer, this, &ABaseCharacter::AutomaticFireReset, AutomaticFireRate);
+	}
+}
+
+void ABaseCharacter::AutomaticFireReset()
+{
+	bShouldFire = true;
+	GetWorldTimerManager().ClearTimer(AutomaticFireTimer);
+	
+	if (bFireButtonPressed)
+	{
+		StartFireTimer();
 	}
 }
 
