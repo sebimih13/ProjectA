@@ -42,6 +42,8 @@ ABaseCharacter::ABaseCharacter()
 
 	// Configure character movement
 	GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
+	GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchSpeed;
+	GetCharacterMovement()->CrouchedHalfHeight = 60.0f;
 	GetCharacterMovement()->MaxAcceleration = 1500.0f;
 	GetCharacterMovement()->BrakingFrictionFactor = 0.0f;
 	GetCharacterMovement()->MinAnalogWalkSpeed = 25.0f;
@@ -98,11 +100,13 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &ABaseCharacter::StartSprint);
 	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &ABaseCharacter::StopSprint);
 
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ABaseCharacter::StartJump);
+	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ABaseCharacter::EndJump);
+
+	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ABaseCharacter::StartCrouch);
+
 	PlayerInputComponent->BindAction("Aim", IE_Pressed, this, &ABaseCharacter::StartAiming);
 	PlayerInputComponent->BindAction("Aim", IE_Released, this, &ABaseCharacter::StopAiming);
-
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
-	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ABaseCharacter::FireButtonPressed);
 	PlayerInputComponent->BindAction("Fire", IE_Released, this, &ABaseCharacter::FireButtonReleased);
@@ -162,6 +166,35 @@ void ABaseCharacter::StopSprint()
 	if (InputType == EInputType::KeyboardMouse)
 	{
 		MainAnimInstance->SetShouldSprint(false);
+	}
+}
+
+void ABaseCharacter::StartJump()
+{
+	// todo
+	ACharacter::Jump();
+}
+
+void ABaseCharacter::EndJump()
+{
+	// todo
+	ACharacter::StopJumping();
+}
+
+void ABaseCharacter::StartCrouch()
+{
+	if (MainAnimInstance->GetMovementState() == EMovementState::Grounded)
+	{
+		if (MainAnimInstance->GetStance() == EStance::Standing)
+		{
+			MainAnimInstance->SetStance(EStance::Crouching);
+			Crouch();
+		}
+		else
+		{
+			MainAnimInstance->SetStance(EStance::Standing);
+			UnCrouch();
+		}
 	}
 }
 
@@ -372,6 +405,27 @@ void ABaseCharacter::FinishCrosshairBulletFire()
 	GetWorldTimerManager().ClearTimer(CrosshairShootTimer);
 }
 
+void ABaseCharacter::StartFireTimer()
+{
+	if (bShouldFire)
+	{
+		FireWeapon();
+		bShouldFire = false;
+		GetWorldTimerManager().SetTimer(AutomaticFireTimer, this, &ABaseCharacter::AutomaticFireReset, AutomaticFireRate);
+	}
+}
+
+void ABaseCharacter::AutomaticFireReset()
+{
+	bShouldFire = true;
+	GetWorldTimerManager().ClearTimer(AutomaticFireTimer);
+	
+	if (bFireButtonPressed)
+	{
+		StartFireTimer();
+	}
+}
+
 void ABaseCharacter::FireWeapon()
 {
 	if (!GetIsAiming() || MainAnimInstance->GetOverlayState() == EOverlayState::Default) return;
@@ -421,31 +475,10 @@ void ABaseCharacter::FireWeapon()
 	case EOverlayState::Rifle:	  WeaponMesh->PlayAnimation(RifleFire, false);	break;
 	}
 
+	StartCrosshairBulletFire();
+
 	// TODO : Play hipfire animation
 	MainAnimInstance->Montage_Play(HipFireMontage);
 	MainAnimInstance->Montage_JumpToSection(FName("StartFire"));
-
-	StartCrosshairBulletFire();
-}
-
-void ABaseCharacter::StartFireTimer()
-{
-	if (bShouldFire)
-	{
-		FireWeapon();
-		bShouldFire = false;
-		GetWorldTimerManager().SetTimer(AutomaticFireTimer, this, &ABaseCharacter::AutomaticFireReset, AutomaticFireRate);
-	}
-}
-
-void ABaseCharacter::AutomaticFireReset()
-{
-	bShouldFire = true;
-	GetWorldTimerManager().ClearTimer(AutomaticFireTimer);
-	
-	if (bFireButtonPressed)
-	{
-		StartFireTimer();
-	}
 }
 

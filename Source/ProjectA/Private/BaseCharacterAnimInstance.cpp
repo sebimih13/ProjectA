@@ -6,6 +6,11 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Curves/CurveVector.h"
 
+UBaseCharacterAnimInstance::UBaseCharacterAnimInstance()
+{
+
+}
+
 void UBaseCharacterAnimInstance::NativeInitializeAnimation()
 {
 	Super::NativeInitializeAnimation();
@@ -125,7 +130,7 @@ FVector UBaseCharacterAnimInstance::CalculateRelativeAccelerationAmount() const
 	return Character->GetActorRotation().UnrotateVector(Character->GetAcceleration().GetClampedToMaxSize(MaxBrakingDec) / MaxBrakingDec);
 }
 
-float UBaseCharacterAnimInstance::CalculateWalkRunBlend()
+float UBaseCharacterAnimInstance::CalculateWalkRunBlend() const
 {
 	return (GetGait() == EGait::Walking) ? 0.0f : 1.0f;
 }
@@ -135,14 +140,7 @@ float UBaseCharacterAnimInstance::CalculateStrideBlend() const
 	const float CurveTime = Character->GetSpeed() / GetOwningComponent()->GetComponentScale().Z;
 	const float ClampedGait = GetAnimCurveClamped(FName(TEXT("Weight_Gait")), -1.0f, 0.0f, 1.0f);
 	const float LerpedStrideBlend = FMath::Lerp(CurveStrideBlendWalkN->GetFloatValue(CurveTime), CurveStrideBlendRunN->GetFloatValue(CurveTime), ClampedGait);
-
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(30, 0.0f, FColor::Purple, FString::Printf(TEXT("Stride Blend : %f"), LerpedStrideBlend));
-	}
-
-	// TODO : add for crouch
-	return LerpedStrideBlend;
+	return FMath::Lerp(LerpedStrideBlend, CurveStrideBlendWalkC->GetFloatValue(Character->GetSpeed()), BasePoseCLF);
 }
 
 float UBaseCharacterAnimInstance::CalculateStandingPlayRate() const
@@ -150,6 +148,11 @@ float UBaseCharacterAnimInstance::CalculateStandingPlayRate() const
 	const float LerpedSpeed = FMath::Lerp(Character->GetSpeed() / Character->WalkSpeed, Character->GetSpeed() / Character->RunSpeed, GetAnimCurveClamped(FName(TEXT("Weight_Gait")), -1.0f, 0.0f, 1.0f));
 	const float LerpedSprint = FMath::Lerp(LerpedSpeed, Character->GetSpeed() / Character->SprintSpeed, GetAnimCurveClamped(FName(TEXT("Weight_Gait")), -2.0f, 0.0f, 1.0f));
 	return FMath::Clamp(LerpedSprint / StrideBlend / GetOwningComponent()->GetComponentScale().Z, 0.0f, 3.0f);
+}
+
+float UBaseCharacterAnimInstance::CalculateCrouchingPlayRate() const
+{
+	return FMath::Clamp(Character->GetSpeed() / Character->CrouchSpeed / StrideBlend / GetOwningComponent()->GetComponentScale().Z, 0.0f, 2.0f);
 }
 
 // Utility Functions
@@ -228,30 +231,13 @@ void UBaseCharacterAnimInstance::UpdateMovementValues(float DeltaSeconds)
 	WalkRunBlend = CalculateWalkRunBlend();
 	StrideBlend = CalculateStrideBlend();
 	StandingPlayRate = CalculateStandingPlayRate();
+	CrouchingPlayRate = CalculateCrouchingPlayRate();
 }
 
 void UBaseCharacterAnimInstance::UpdateRotationValues()
 {
 	// Calculate Movement Direction
 	MovementDirection = CalculateMovementDirection();
-
-	if (GEngine)
-	{
-		switch (MovementDirection)
-		{
-		case EMovementDirection::Forward:	GEngine->AddOnScreenDebugMessage(17, 0.0f, FColor::Black, FString::Printf(TEXT("FORWARD")));	break;
-		case EMovementDirection::Backward:	GEngine->AddOnScreenDebugMessage(17, 0.0f, FColor::Black, FString::Printf(TEXT("BACKWARD")));	break;
-		case EMovementDirection::Left:		GEngine->AddOnScreenDebugMessage(17, 0.0f, FColor::Black, FString::Printf(TEXT("LEFT")));		break;
-		case EMovementDirection::Right:		GEngine->AddOnScreenDebugMessage(17, 0.0f, FColor::Black, FString::Printf(TEXT("RIGHT")));		break;
-		}
-
-		switch (Gait)
-		{
-		case EGait::Walking:   GEngine->AddOnScreenDebugMessage(25, 0.0f, FColor::Black, FString::Printf(TEXT("Walking"))); break;
-		case EGait::Running:   GEngine->AddOnScreenDebugMessage(25, 0.0f, FColor::Black, FString::Printf(TEXT("Running"))); break;
-		case EGait::Sprinting: GEngine->AddOnScreenDebugMessage(25, 0.0f, FColor::Black, FString::Printf(TEXT("Sprinting"))); break;
-		}
-	}
 
 	// Yaw Offsets
 	const FVector& FBOffset = CurveYawOffsetFB->GetVectorValue(YawDelta);
@@ -278,7 +264,6 @@ void UBaseCharacterAnimInstance::UpdateLayerValues()
 {
 	BasePoseN = GetCurveValue(FName(TEXT("BasePose_N")));
 	BasePoseCLF = GetCurveValue(FName(TEXT("BasePose_CLF")));
-	BasePoseN = 1.0f;	// TODO : delete
 
 	ArmRAdd = GetCurveValue(FName(TEXT("Layering_Arm_R_Add")));
 	ArmLAdd = GetCurveValue(FName(TEXT("Layering_Arm_L_Add")));

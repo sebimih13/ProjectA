@@ -56,6 +56,13 @@ protected:
 	void StartSprint();
 	void StopSprint();
 
+	/** Called for jumping */
+	void StartJump();
+	void EndJump();
+
+	/** Called for crouching */
+	void StartCrouch();
+
 	/** Called for aiming */
 	void StartAiming();
 	void StopAiming();
@@ -158,6 +165,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Movement")
 	float SprintSpeed = 650.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Movement")
+	float CrouchSpeed = 200.0f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapons")
 	USkeletalMesh* PistolMesh;
 
@@ -199,9 +209,9 @@ private:
 	void FinishCrosshairBulletFire();
 
 	/** Fire the weapon */
-	void FireWeapon();
 	void StartFireTimer();
 	void AutomaticFireReset();
+	void FireWeapon();
 
 public:
 	/** FORCEINLINE Setters / Getters */

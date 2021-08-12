@@ -36,6 +36,13 @@ enum class EMovementState : uint8
 };
 
 UENUM(BlueprintType)
+enum class EStance : uint8
+{
+	Standing	UMETA(DisplayName = "Standing"),
+	Crouching	UMETA(DisplayName = "Crouching")
+};
+
+UENUM(BlueprintType)
 enum class EOverlayState : uint8
 {
 	Default		UMETA(DisplayName = "Default"),
@@ -101,6 +108,8 @@ class PROJECTA_API UBaseCharacterAnimInstance : public UAnimInstance
 	GENERATED_BODY()
 
 public:
+	UBaseCharacterAnimInstance();
+
 	virtual void NativeInitializeAnimation() override;
 
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
@@ -114,10 +123,13 @@ public:
 	EMovementDirection MovementDirection = EMovementDirection::Forward;
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement")
+	EGait Gait = EGait::Walking;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement")
 	EMovementState MovementState = EMovementState::Grounded;
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement")
-	EGait Gait = EGait::Walking;
+	EStance Stance = EStance::Standing;
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement")
 	EOverlayState OverlayState = EOverlayState::Default;
@@ -133,6 +145,9 @@ public:
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement")
 	float StandingPlayRate = 0.0f;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement")
+	float CrouchingPlayRate = 0.0f;
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement")
 	FVector RelativeAccelerationAmount = FVector::ZeroVector;
@@ -224,6 +239,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration|Curves")
 	UCurveFloat* CurveStrideBlendRunN = nullptr;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration|Curves")
+	UCurveFloat* CurveStrideBlendWalkC = nullptr;
+
 private:
 	/** References */
 	ABaseCharacter* Character;
@@ -254,9 +272,10 @@ private:
 
 	FVector CalculateRelativeAccelerationAmount() const;
 
-	float CalculateWalkRunBlend();
+	float CalculateWalkRunBlend() const;
 	float CalculateStrideBlend() const;
 	float CalculateStandingPlayRate() const;
+	float CalculateCrouchingPlayRate() const;
 
 	/** Utility Functions */
 	bool AngleInRange(float Angle, float MinAngle, float MaxAngle) const;
@@ -271,16 +290,19 @@ private:
 
 public:
 	/** Setters and Getters */
-	FORCEINLINE EGait GetGait() { return Gait; };
+	FORCEINLINE EGait GetGait() const { return Gait; };
 	void SetGait(EGait DesiredGait);
 
-	FORCEINLINE bool GetShouldSprint() { return bShouldSprint; };
+	FORCEINLINE bool GetShouldSprint() const { return bShouldSprint; };
 	FORCEINLINE void SetShouldSprint(bool Value) { bShouldSprint = Value; };
 
-	FORCEINLINE EMovementState GetMovementState() { return MovementState; };
+	FORCEINLINE EMovementState GetMovementState() const { return MovementState; };
 	FORCEINLINE void SetMovementState(EMovementState DesiredState) { MovementState = DesiredState; };
 
-	FORCEINLINE EOverlayState GetOverlayState() { return OverlayState; };
+	FORCEINLINE EStance GetStance() const { return Stance; };
+	FORCEINLINE void SetStance(EStance DesiredStance) { Stance = DesiredStance; };
+
+	FORCEINLINE EOverlayState GetOverlayState() const { return OverlayState; };
 	FORCEINLINE void SetOverlayState(EOverlayState DesiredState) { OverlayState = DesiredState; };
 };
 
