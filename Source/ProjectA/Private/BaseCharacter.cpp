@@ -67,6 +67,7 @@ void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	ChangeMovementState();
 	UpdateCharacterInformations(DeltaTime);
 
 	if (MainAnimInstance->GetMovementState() == EMovementState::Grounded)
@@ -120,6 +121,7 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	PlayerInputComponent->BindAction("Pistol2H", IE_Pressed, this, &ABaseCharacter::SetPistol2HOverlay);
 }
 
+// Input Functions
 void ABaseCharacter::MoveForward(float Value)
 {
 	const FRotator DirRotator(0.f, Controller->GetControlRotation().Yaw, 0.f);
@@ -171,13 +173,13 @@ void ABaseCharacter::StopSprint()
 
 void ABaseCharacter::StartJump()
 {
-	// todo
+	MainAnimInstance->SetJumped(true);
+	GetWorldTimerManager().SetTimer(JumpingTimer, this, &ABaseCharacter::ResetJump, 0.1f);
 	ACharacter::Jump();
 }
 
 void ABaseCharacter::EndJump()
 {
-	// todo
 	ACharacter::StopJumping();
 }
 
@@ -393,6 +395,18 @@ void ABaseCharacter::LimitRotation(float AimYawMin, float AimYawMax, float Inter
 	}
 }
 
+void ABaseCharacter::ChangeMovementState()
+{
+	if (GetCharacterMovement()->MovementMode == EMovementMode::MOVE_Walking)
+	{
+		MainAnimInstance->SetMovementState(EMovementState::Grounded);
+	}
+	else if (GetCharacterMovement()->MovementMode == EMovementMode::MOVE_Falling)
+	{
+		MainAnimInstance->SetMovementState(EMovementState::InAir);
+	}
+}
+
 void ABaseCharacter::StartCrosshairBulletFire()
 {
 	bIsFiringBullet = true;
@@ -480,5 +494,11 @@ void ABaseCharacter::FireWeapon()
 	// TODO : Play hipfire animation
 	MainAnimInstance->Montage_Play(HipFireMontage);
 	MainAnimInstance->Montage_JumpToSection(FName("StartFire"));
+}
+
+void ABaseCharacter::ResetJump()
+{
+	MainAnimInstance->SetJumped(false);
+	GetWorldTimerManager().ClearTimer(JumpingTimer);
 }
 

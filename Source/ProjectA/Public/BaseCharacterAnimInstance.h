@@ -162,6 +162,25 @@ public:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement")
 	bool bIsAiming = false;
 
+	/** Jumping System */
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement|Jumping")
+	bool bJumped = false;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement|Jumping")
+	float JumpPlayRate = 0.0f;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement|Jumping")
+	float Speed = 0.0f;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement|Jumping")
+	float FallSpeed = 0.0f;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement|Jumping")
+	float LandPrediction = 0.0f;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement|Jumping")
+	bool bHasMovementInput = false;
+
 	/** Rotate in place system */
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Movement|RotateInPlace")
 	bool bRotateR = false;
@@ -218,6 +237,12 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration|Movement")
 	float VelocityBlendInterpSpeed = 12.0f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration|Movement")
+	float GroundedLeanInterpSpeed = 4.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration|Movement")
+	float InAirLeanInterpSpeed = 4.0f;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration|RotateInPlace")
 	float RotateMinThreshold = -50.0f;
 
@@ -241,6 +266,12 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration|Curves")
 	UCurveFloat* CurveStrideBlendWalkC = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration|Curves")
+	UCurveFloat* CurveLeanInAirCurve = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration|Curves")
+	UCurveFloat* CurveLandPrediction = nullptr;
 
 private:
 	/** References */
@@ -276,6 +307,8 @@ private:
 	float CalculateStrideBlend() const;
 	float CalculateStandingPlayRate() const;
 	float CalculateCrouchingPlayRate() const;
+	float CalculateLandPrediction() const;
+	FLeanAmount CalculateAirLeanAmount() const;
 
 	/** Utility Functions */
 	bool AngleInRange(float Angle, float MinAngle, float MaxAngle) const;
@@ -287,6 +320,7 @@ private:
 	void UpdateRotationValues();
 	void UpdateRotateInPlaceValues();
 	void UpdateLayerValues();
+	void UpdateInAirValues(float DeltaSeconds);
 
 public:
 	/** Setters and Getters */
@@ -295,6 +329,8 @@ public:
 
 	FORCEINLINE bool GetShouldSprint() const { return bShouldSprint; };
 	FORCEINLINE void SetShouldSprint(bool Value) { bShouldSprint = Value; };
+
+	FORCEINLINE void SetJumped(bool DesiredState) { bJumped = DesiredState; }
 
 	FORCEINLINE EMovementState GetMovementState() const { return MovementState; };
 	FORCEINLINE void SetMovementState(EMovementState DesiredState) { MovementState = DesiredState; };

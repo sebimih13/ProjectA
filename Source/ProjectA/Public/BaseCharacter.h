@@ -130,6 +130,9 @@ private:
 	float AutomaticFireRate = 0.1f;
 	FTimerHandle AutomaticFireTimer;
 
+	/** Jumping */
+	FTimerHandle JumpingTimer;
+
 	/** Cached Variables */
 	FVector PreviousVelocity = FVector::ZeroVector;
 	float PreviousAimYawRate = 0.0f;
@@ -203,6 +206,7 @@ private:
 	/** Utility Functions */
 	void SmoothCharacterRotation(FRotator Target, float TargetInterpSpeed, float ActorInterpSpeed, float DeltaTime);
 	void LimitRotation(float AimYawMin, float AimYawMax, float InterpSpeed, float DeltaTime);
+	void ChangeMovementState();
 
 	/** Sets the bFiringBullet to true/false */
 	void StartCrosshairBulletFire();
@@ -212,6 +216,9 @@ private:
 	void StartFireTimer();
 	void AutomaticFireReset();
 	void FireWeapon();
+
+	/** Jumping */
+	void ResetJump();
 
 public:
 	/** FORCEINLINE Setters / Getters */

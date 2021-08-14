@@ -3,8 +3,10 @@
 #include "BaseCharacterAnimInstance.h"
 #include "BaseCharacter.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Curves/CurveVector.h"
+#include "Components/CapsuleComponent.h"
 
 UBaseCharacterAnimInstance::UBaseCharacterAnimInstance()
 {
@@ -61,11 +63,9 @@ void UBaseCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 			}
 		}
 	}
-
-	// TODO
-	if (GetMovementState() == EMovementState::InAir)
+	else if (GetMovementState() == EMovementState::InAir)
 	{
-
+		UpdateInAirValues(DeltaSeconds);
 	}
 }
 
@@ -75,14 +75,6 @@ FVelocityBlend UBaseCharacterAnimInstance::CalculateVelocityBlend() const
 	const FVector LocRelativeVelocityDir = Character->GetActorRotation().UnrotateVector(Character->GetVelocity().GetSafeNormal(0.1f));
 	const float Sum = FMath::Abs(LocRelativeVelocityDir.X) + FMath::Abs(LocRelativeVelocityDir.Y) + FMath::Abs(LocRelativeVelocityDir.Z);
 	const FVector RelativeDir = LocRelativeVelocityDir / Sum;
-
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Black, FString::Printf(TEXT("LOC : %f  %f  %f"), LocRelativeVelocityDir.X, LocRelativeVelocityDir.Y, LocRelativeVelocityDir.Z));
-		GEngine->AddOnScreenDebugMessage(2, 0.0f, FColor::Black, FString::Printf(TEXT("ROT : %f  %f  %f"), Character->GetActorRotation().Pitch, Character->GetActorRotation().Yaw, Character->GetActorRotation().Roll));
-		GEngine->AddOnScreenDebugMessage(3, 0.0f, FColor::Black, FString::Printf(TEXT("VEL : %f  %f  %f"), Character->GetVelocity().X, Character->GetVelocity().Y, Character->GetVelocity().Z));
-		GEngine->AddOnScreenDebugMessage(4, 0.0f, FColor::Black, FString::Printf(TEXT("DIR : %f  %f  %f"), RelativeDir.X, RelativeDir.Y, RelativeDir.Z));
-	}
 
 	FVelocityBlend Result;
 	Result.F = FMath::Clamp(RelativeDir.X, 0.0f, 1.0f);
@@ -94,11 +86,6 @@ FVelocityBlend UBaseCharacterAnimInstance::CalculateVelocityBlend() const
 
 EMovementDirection UBaseCharacterAnimInstance::CalculateMovementDirection()
 {
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(15, 0.0f, FColor::Black, FString::Printf(TEXT("YawDelta : %f"), YawDelta));
-	}
-
 	if (AngleInRange(YawDelta, -70.0f, 70.0f))
 	{
 		GetShouldSprint() ? SetGait(EGait::Sprinting) : SetGait(EGait::Running);
@@ -153,6 +140,51 @@ float UBaseCharacterAnimInstance::CalculateStandingPlayRate() const
 float UBaseCharacterAnimInstance::CalculateCrouchingPlayRate() const
 {
 	return FMath::Clamp(Character->GetSpeed() / Character->CrouchSpeed / StrideBlend / GetOwningComponent()->GetComponentScale().Z, 0.0f, 2.0f);
+}
+
+float UBaseCharacterAnimInstance::CalculateLandPrediction() const
+{
+	if (FallSpeed >= -200.0f)
+	{
+		return 0.0f;
+	}
+
+	const float VelocityZ = Character->GetVelocity().Z;
+	FVector VelocityClamped = Character->GetVelocity();
+	VelocityClamped.Z = FMath::Clamp(VelocityZ, -4000.0f, 200.0f);
+	VelocityClamped.Normalize();
+	const FVector TraceLength = VelocityClamped * FMath::GetMappedRangeValueClamped(FVector2D(0.0f, -4000.0f), FVector2D(50.0f, 2000.0f), VelocityZ);
+
+	const FVector& Start = Character->GetCapsuleComponent()->GetComponentLocation();
+	const FVector End = Start + TraceLength;
+
+	FCollisionShape CapsuleCollisionShape = FCollisionShape::MakeCapsule(Character->GetCapsuleComponent()->GetUnscaledCapsuleRadius(),
+																		 Character->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight());
+
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(Character);
+
+	FHitResult HitResult;
+	GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, ECollisionChannel::ECC_Visibility, CapsuleCollisionShape, Params);
+
+	if (Character->GetCharacterMovement()->IsWalkable(HitResult))
+	{
+		return FMath::Lerp(CurveLandPrediction->GetFloatValue(HitResult.Time), 0.0f, GetCurveValue(FName("Mask_LandPrediction")));
+	}
+
+	return 0.0f;
+}
+
+FLeanAmount UBaseCharacterAnimInstance::CalculateAirLeanAmount() const
+{
+	FLeanAmount CalculatedLeanAmount;
+	const FVector& UnrotatedVel = Character->GetActorRotation().UnrotateVector(Character->GetVelocity()) / 350.0f;
+	const float Multiplier = CurveLeanInAirCurve->GetFloatValue(FallSpeed);
+	
+	CalculatedLeanAmount.LR = UnrotatedVel.Y * Multiplier;
+	CalculatedLeanAmount.FB = UnrotatedVel.X * Multiplier;
+
+	return CalculatedLeanAmount;
 }
 
 // Utility Functions
@@ -214,18 +246,10 @@ void UBaseCharacterAnimInstance::UpdateMovementValues(float DeltaSeconds)
 	VelocityBlend.L = FMath::FInterpTo(VelocityBlend.L, VelocityBlendTarget.L, DeltaSeconds, VelocityBlendInterpSpeed);
 	VelocityBlend.R = FMath::FInterpTo(VelocityBlend.R, VelocityBlendTarget.R, DeltaSeconds, VelocityBlendInterpSpeed);
 
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(10, 0.0f, FColor::Black, FString::Printf(TEXT("F : %f"), VelocityBlend.F));
-		GEngine->AddOnScreenDebugMessage(11, 0.0f, FColor::Black, FString::Printf(TEXT("B : %f"), VelocityBlend.B));
-		GEngine->AddOnScreenDebugMessage(12, 0.0f, FColor::Black, FString::Printf(TEXT("L : %f"), VelocityBlend.L));
-		GEngine->AddOnScreenDebugMessage(13, 0.0f, FColor::Black, FString::Printf(TEXT("R : %f"), VelocityBlend.R));
-	}
-
 	// Set the Relative Acceleration Amount and Interp the Lean Amount
 	RelativeAccelerationAmount = CalculateRelativeAccelerationAmount();
-	LeanAmount.LR = FMath::FInterpTo(LeanAmount.LR, RelativeAccelerationAmount.Y, DeltaSeconds, 4.0f);
-	LeanAmount.FB = FMath::FInterpTo(LeanAmount.LR, RelativeAccelerationAmount.X, DeltaSeconds, 4.0f);
+	LeanAmount.LR = FMath::FInterpTo(LeanAmount.LR, RelativeAccelerationAmount.Y, DeltaSeconds, GroundedLeanInterpSpeed);
+	LeanAmount.FB = FMath::FInterpTo(LeanAmount.LR, RelativeAccelerationAmount.X, DeltaSeconds, GroundedLeanInterpSpeed);
 
 	// Set WalkRunBlend / StrideBlend / StandingPlayRate
 	WalkRunBlend = CalculateWalkRunBlend();
@@ -275,5 +299,24 @@ void UBaseCharacterAnimInstance::UpdateLayerValues()
 
 	ArmRLS = GetCurveValue(FName(TEXT("Layering_Arm_R_LS")));
 	ArmRMS = static_cast<float>(1 - FMath::FloorToInt(ArmRLS));
+}
+
+void UBaseCharacterAnimInstance::UpdateInAirValues(float DeltaSeconds)
+{
+	Speed = Character->GetSpeed();
+	bHasMovementInput = Character->GetHasMovementInput();
+	JumpPlayRate = FMath::GetMappedRangeValueClamped(FVector2D(0.0f, 600.0f), FVector2D(1.2f, 1.5f), Character->GetSpeed());
+
+	FallSpeed = Character->GetVelocity().Z;
+	LandPrediction = CalculateLandPrediction();
+
+	const FLeanAmount& InAirLeanAmount = CalculateAirLeanAmount();
+	LeanAmount.LR = FMath::FInterpTo(LeanAmount.LR, InAirLeanAmount.LR, DeltaSeconds, InAirLeanInterpSpeed);
+	LeanAmount.FB = FMath::FInterpTo(LeanAmount.FB, InAirLeanAmount.FB, DeltaSeconds, InAirLeanInterpSpeed);
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Black, FString::Printf(TEXT("LandPrediction : %f"), LandPrediction));
+	}
 }
 
