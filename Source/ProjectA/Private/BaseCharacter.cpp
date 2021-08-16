@@ -1,13 +1,22 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "BaseCharacter.h"
+
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Particles/ParticleSystemComponent.h"
+#include "Engine/SkeletalMeshSocket.h"
+#include "Components/BoxComponent.h"
+#include "Components/SphereComponent.h"
+#include "Components/WidgetComponent.h"
+
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
+
 #include "BaseCharacterAnimInstance.h"
-#include "Particles/ParticleSystemComponent.h"
+#include "Item.h"
+#include "Weapon.h"
 
 // TODO : debug
 #include "DrawDebugHelpers.h"
@@ -31,10 +40,6 @@ ABaseCharacter::ABaseCharacter()
 	FollowCamera->bUsePawnControlRotation = false;
 	FollowCamera->FieldOfView = CameraDefaultFOV;
 
-	// Create weapon skeletal mesh
-	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
-	WeaponMesh->SetupAttachment(GetMesh());
-
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
@@ -57,9 +62,11 @@ void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	WeaponMesh->AttachTo(GetMesh(), FName("weapon_slot_r"));
+	// WeaponMesh->AttachTo(GetMesh(), FName("weapon_slot_r"));
 
 	MainAnimInstance = Cast<UBaseCharacterAnimInstance>(GetMesh()->GetAnimInstance());
+
+	EquipWeapon(SpawnDefaultWeapon());
 }
 
 // Called every frame
@@ -81,6 +88,9 @@ void ABaseCharacter::Tick(float DeltaTime)
 	{
 
 	}
+
+	// Items System
+	UpdateTraceForItems();
 
 	// Cached values
 	PreviousVelocity = GetVelocity();
@@ -111,6 +121,9 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ABaseCharacter::FireButtonPressed);
 	PlayerInputComponent->BindAction("Fire", IE_Released, this, &ABaseCharacter::FireButtonReleased);
+
+	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &ABaseCharacter::InteractButtonPressed);
+	PlayerInputComponent->BindAction("Interact", IE_Released, this, &ABaseCharacter::InteractButtonReleased);
 
 	PlayerInputComponent->BindAction("SwitchInput", IE_Pressed, this, &ABaseCharacter::SwitchInput);
 
@@ -235,28 +248,42 @@ void ABaseCharacter::FireButtonReleased()
 	bFireButtonPressed = false;
 }
 
+void ABaseCharacter::InteractButtonPressed()
+{
+	if (TraceHitItem)
+	{
+		AWeapon* TraceHitWeapon = Cast<AWeapon>(TraceHitItem);
+		SwapWeapon(TraceHitWeapon);
+	}
+}
+
+void ABaseCharacter::InteractButtonReleased()
+{
+
+}
+
 void ABaseCharacter::SetDefaultOverlay()
 {
-	WeaponMesh->SetSkeletalMesh(nullptr);
 	MainAnimInstance->SetOverlayState(EOverlayState::Default);
+	// TODO : WeaponMesh->SetSkeletalMesh(nullptr);
 }
 
 void ABaseCharacter::SetRifleOverlay()
 {
 	MainAnimInstance->SetOverlayState(EOverlayState::Rifle);
-	WeaponMesh->SetSkeletalMesh(RifleMesh);
+	// TODO : WeaponMesh->SetSkeletalMesh(RifleMesh);
 }
 
 void ABaseCharacter::SetPistol1HOverlay()
 {
 	MainAnimInstance->SetOverlayState(EOverlayState::Pistol1H);
-	WeaponMesh->SetSkeletalMesh(PistolMesh);
+	// TODO : WeaponMesh->SetSkeletalMesh(PistolMesh);
 }
 
 void ABaseCharacter::SetPistol2HOverlay()
 {
 	MainAnimInstance->SetOverlayState(EOverlayState::Pistol2H);
-	WeaponMesh->SetSkeletalMesh(PistolMesh);
+	// TODO : WeaponMesh->SetSkeletalMesh(PistolMesh);
 }
 
 void ABaseCharacter::SwitchInput(FKey Key)
@@ -360,9 +387,12 @@ void ABaseCharacter::UpdateCharacterCamera(float DeltaTime)
 	{
 		MainAnimInstance->SetShouldSprint(false);
 
-		if (WeaponMesh->DoesSocketExist(FName("Aim")))
+		GetFollowCamera()->FieldOfView = FMath::FInterpTo(GetFollowCamera()->FieldOfView, CameraZoomFOV, DeltaTime, CameraFOVInterpSpeed);
+
+		/* TODO :
+		if (EquippedWeapon && EquippedWeapon->GetItemMesh()->DoesSocketExist(FName("Aim")))
 		{
-			GetCameraBoom()->SetRelativeLocation(FMath::VInterpTo(GetCameraBoom()->GetRelativeLocation(), WeaponMesh->GetSocketTransform(FName("Aim"), ERelativeTransformSpace::RTS_Actor).GetLocation(), DeltaTime, CameraLocationInterpSpeed));
+			GetCameraBoom()->SetRelativeLocation(FMath::VInterpTo(GetCameraBoom()->GetRelativeLocation(), EquippedWeapon->GetItemMesh()->GetSocketTransform(FName("Aim"), ERelativeTransformSpace::RTS_Actor).GetLocation(), DeltaTime, CameraLocationInterpSpeed));
 			GetFollowCamera()->FieldOfView = FMath::FInterpTo(GetFollowCamera()->FieldOfView, CameraDefaultFOV, DeltaTime, CameraFOVInterpSpeed);
 		}
 		else
@@ -370,11 +400,39 @@ void ABaseCharacter::UpdateCharacterCamera(float DeltaTime)
 			GetCameraBoom()->SetRelativeLocation(FMath::VInterpTo(GetCameraBoom()->GetRelativeLocation(), FVector(0.0f, 0.0f, 70.0f), DeltaTime, CameraLocationInterpSpeed));
 			GetFollowCamera()->FieldOfView = FMath::FInterpTo(GetFollowCamera()->FieldOfView, CameraZoomFOV, DeltaTime, CameraFOVInterpSpeed);
 		}
+		*/
 	}
 	else
 	{
-		GetCameraBoom()->SetRelativeLocation(FMath::VInterpTo(GetCameraBoom()->GetRelativeLocation(), FVector(0.0f, 0.0f, 70.0f), DeltaTime, CameraLocationInterpSpeed));
+		// TODO : GetCameraBoom()->SetRelativeLocation(FMath::VInterpTo(GetCameraBoom()->GetRelativeLocation(), FVector(0.0f, 0.0f, 70.0f), DeltaTime, CameraLocationInterpSpeed));
 		GetFollowCamera()->FieldOfView = FMath::FInterpTo(GetFollowCamera()->FieldOfView, CameraDefaultFOV, DeltaTime, CameraFOVInterpSpeed);
+	}
+}
+
+void ABaseCharacter::UpdateTraceForItems()
+{
+	if (bShouldTraceForItems)
+	{
+		FHitResult ItemHitResult;
+		if (TraceUnderCrosshairs(ItemHitResult))
+		{
+			TraceHitItem = Cast<AItem>(ItemHitResult.GetActor());
+
+			if (TraceHitItem && TraceHitItem->GetPickupWidget())
+			{
+				TraceHitItem->GetPickupWidget()->SetVisibility(true);
+			}
+
+			if (LastTraceHitItem && LastTraceHitItem != TraceHitItem)
+			{
+				LastTraceHitItem->GetPickupWidget()->SetVisibility(false);
+			}
+			LastTraceHitItem = TraceHitItem;
+		}
+	}
+	else if (LastTraceHitItem)
+	{
+		LastTraceHitItem->GetPickupWidget()->SetVisibility(false);
 	}
 }
 
@@ -456,7 +514,7 @@ void ABaseCharacter::FireWeapon()
 	FVector CrosshairWorldPosition, CrosshairWorldDirection;
 	bool bScreenToWorld = UGameplayStatics::DeprojectScreenToWorld(UGameplayStatics::GetPlayerController(this, 0), CrosshairLocation, CrosshairWorldPosition, CrosshairWorldDirection);
 
-	// Perfom line trace
+	// Perfom line trace from Crosshair location
 	if (bScreenToWorld)
 	{
 		FHitResult ScreenTraceHit;
@@ -474,19 +532,19 @@ void ABaseCharacter::FireWeapon()
 			BeamEndPoint = ScreenTraceHit.Location;
 		}
 
-		UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BeamParticles, WeaponMesh->GetSocketTransform(FName("MuzzleFlash")));
+		UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BeamParticles, EquippedWeapon->GetItemMesh()->GetSocketTransform(FName("MuzzleFlash")));
 		if (Beam)
 		{
 			Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
 		}
 	}
 
-	// Play weapon animation
+	// Play weapon animation  TODO - MOVE ANIMATIONS TO WEAPON CLASS
 	switch (MainAnimInstance->GetOverlayState())
 	{
-	case EOverlayState::Pistol1H: WeaponMesh->PlayAnimation(PistolFire, false); break;
-	case EOverlayState::Pistol2H: WeaponMesh->PlayAnimation(PistolFire, false);	break;
-	case EOverlayState::Rifle:	  WeaponMesh->PlayAnimation(RifleFire, false);	break;
+	case EOverlayState::Pistol1H: EquippedWeapon->GetItemMesh()->PlayAnimation(PistolFire, false); break;
+	case EOverlayState::Pistol2H: EquippedWeapon->GetItemMesh()->PlayAnimation(PistolFire, false);	break;
+	case EOverlayState::Rifle:	  EquippedWeapon->GetItemMesh()->PlayAnimation(RifleFire, false);	break;
 	}
 
 	StartCrosshairBulletFire();
@@ -500,5 +558,89 @@ void ABaseCharacter::ResetJump()
 {
 	MainAnimInstance->SetJumped(false);
 	GetWorldTimerManager().ClearTimer(JumpingTimer);
+}
+
+bool ABaseCharacter::TraceUnderCrosshairs(FHitResult& HitResult)
+{
+	// Get viewport size
+	FVector2D ViewportSize;
+	if (GEngine && GEngine->GameViewport)
+	{
+		GEngine->GameViewport->GetViewportSize(ViewportSize);
+	}
+
+	// Get crosshair location
+	FVector2D CrosshairLocation = FVector2D(ViewportSize.X / 2.0f, ViewportSize.Y / 2.0f);
+	FVector CrosshairWorldPosition, CrosshairWorldDirection;
+	bool bScreenToWorld = UGameplayStatics::DeprojectScreenToWorld(UGameplayStatics::GetPlayerController(this, 0), CrosshairLocation, CrosshairWorldPosition, CrosshairWorldDirection);
+
+	// Perfom line trace from Crosshair location
+	if (bScreenToWorld)
+	{
+		FHitResult ScreenTraceHit;
+		const FVector Start = CrosshairWorldPosition;
+		const FVector End = CrosshairWorldPosition + CrosshairWorldDirection * 50000.0f;
+		GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECollisionChannel::ECC_Visibility);
+
+		if (HitResult.bBlockingHit)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+AWeapon* ABaseCharacter::SpawnDefaultWeapon()
+{
+	if (DefaultWeaponClass)
+	{
+		return GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
+	}
+	return nullptr;
+}
+
+void ABaseCharacter::EquipWeapon(AWeapon* WeaponToEquip)
+{
+	if (WeaponToEquip)
+	{
+		FAttachmentTransformRules AttachmentRules(EAttachmentRule::SnapToTarget, false);
+		WeaponToEquip->AttachToComponent(GetMesh(), AttachmentRules, FName("weapon_slot_r"));
+
+		EquippedWeapon = WeaponToEquip;
+		EquippedWeapon->SetItemState(EItemState::Equipped);
+	}
+}
+
+void ABaseCharacter::DropWeapon()
+{
+	if (EquippedWeapon)
+	{
+		FDetachmentTransformRules DetachmentRules(EDetachmentRule::KeepWorld, true);
+		EquippedWeapon->GetItemMesh()->DetachFromComponent(DetachmentRules);
+		EquippedWeapon->SetItemState(EItemState::Falling);
+		EquippedWeapon->ThrowWeapon();
+	}
+}
+
+void ABaseCharacter::SwapWeapon(AWeapon* WeaponToSwap)
+{
+	DropWeapon();
+	EquipWeapon(WeaponToSwap);
+	TraceHitItem = nullptr;
+	LastTraceHitItem = nullptr;
+}
+
+void ABaseCharacter::IncrementOverlappedItemsCount(int8 Amount)
+{
+	if (OverlappedItemsCount + Amount <= 0)
+	{
+		OverlappedItemsCount = 0;
+		bShouldTraceForItems = false;
+	}
+	else
+	{
+		OverlappedItemsCount += Amount;
+		bShouldTraceForItems = true;
+	}
 }
 

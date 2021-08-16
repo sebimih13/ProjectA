@@ -10,6 +10,8 @@
 class USpringArmComponent;
 class UCameraComponent;
 class UBaseCharacterAnimInstance;
+class AItem;
+class AWeapon;
 
 /** TODO : Put this in character controller */
 UENUM(BlueprintType)
@@ -71,6 +73,10 @@ protected:
 	void FireButtonPressed();
 	void FireButtonReleased();
 
+	/** Called for interacting with items in the world */
+	void InteractButtonPressed();
+	void InteractButtonReleased();
+
 	/** Switch Weapons */
 	void SetDefaultOverlay();
 	void SetRifleOverlay();
@@ -88,10 +94,6 @@ private:
 	/** Follow Camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
-
-	/** Skeletal Mesh Component for weapon slot */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
-	USkeletalMeshComponent* WeaponMesh;
 
 private:
 	/** References */
@@ -136,6 +138,15 @@ private:
 	/** Cached Variables */
 	FVector PreviousVelocity = FVector::ZeroVector;
 	float PreviousAimYawRate = 0.0f;
+
+	/** Items System */
+	bool bShouldTraceForItems = false;
+	int8 OverlappedItemsCount = 0;
+	AItem* LastTraceHitItem = nullptr;
+
+	/** Weapon System */
+	AWeapon* EquippedWeapon;
+	AItem* TraceHitItem;
 
 public:
 	/** Base turn rate, in deg/sec */
@@ -194,6 +205,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapons")
 	UParticleSystem* BeamParticles;
 
+	/** Default Weapon to spawn with Character */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration|Weapons")
+	TSubclassOf<AWeapon> DefaultWeaponClass;
+
 private:
 	/** Calculate Functions */
 	float CalculateGroundedRotationRate() const;
@@ -202,6 +217,7 @@ private:
 	void UpdateGroundedRotation(float DeltaTime);
 	void UpdateCharacterInformations(float DeltaTime);
 	void UpdateCharacterCamera(float DeltaTime);
+	void UpdateTraceForItems();
 
 	/** Utility Functions */
 	void SmoothCharacterRotation(FRotator Target, float TargetInterpSpeed, float ActorInterpSpeed, float DeltaTime);
@@ -220,7 +236,19 @@ private:
 	/** Jumping */
 	void ResetJump();
 
+	/** Performs a line trace under crosshairs */
+	bool TraceUnderCrosshairs(FHitResult& HitResult);
+
+	/** Weapon System */
+	AWeapon* SpawnDefaultWeapon();
+	void EquipWeapon(AWeapon* WeaponToEquip);
+	void DropWeapon();
+	void SwapWeapon(AWeapon* WeaponToSwap);
+
 public:
+	/** Adds / Substracts to/from OverlappedItemsCount and updates bShouldTraceForItems */
+	void IncrementOverlappedItemsCount(int8 Amount);
+
 	/** FORCEINLINE Setters / Getters */
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; };
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; };
@@ -245,5 +273,7 @@ public:
 	FORCEINLINE bool GetIsFiringBullet() const { return bIsFiringBullet; };
 
 	FORCEINLINE float GetAimYawRate() const { return AimYawRate; };
+
+	FORCEINLINE int8 GetOverlappedItemsCount() const { return OverlappedItemsCount; };
 };
 
