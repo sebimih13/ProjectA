@@ -66,6 +66,7 @@ void ABaseCharacter::BeginPlay()
 
 	MainAnimInstance = Cast<UBaseCharacterAnimInstance>(GetMesh()->GetAnimInstance());
 
+	InitializeAmmoMap();
 	EquipWeapon(SpawnDefaultWeapon());
 }
 
@@ -231,13 +232,14 @@ void ABaseCharacter::StopAiming()
 
 void ABaseCharacter::FireButtonPressed()
 {
-	bFireButtonPressed = true;
+	if (!WeaponHasAmmo() || !EquippedWeapon || !GetIsAiming()) return;
 
+	bFireButtonPressed = true;
 	if (MainAnimInstance->GetOverlayState() == EOverlayState::Rifle)
 	{
 		StartFireTimer();
 	}
-	else
+	else if (MainAnimInstance->GetOverlayState() == EOverlayState::Pistol1H || MainAnimInstance->GetOverlayState() == EOverlayState::Pistol2H)
 	{
 		FireWeapon();
 	}
@@ -488,6 +490,8 @@ void ABaseCharacter::StartFireTimer()
 
 void ABaseCharacter::AutomaticFireReset()
 {
+	if (!WeaponHasAmmo()) return;
+
 	bShouldFire = true;
 	GetWorldTimerManager().ClearTimer(AutomaticFireTimer);
 	
@@ -499,8 +503,6 @@ void ABaseCharacter::AutomaticFireReset()
 
 void ABaseCharacter::FireWeapon()
 {
-	if (!GetIsAiming() || MainAnimInstance->GetOverlayState() == EOverlayState::Default) return;
-
 	// Get viewport size
 	FVector2D ViewportSize;
 	if (GEngine && GEngine->GameViewport)
@@ -513,7 +515,7 @@ void ABaseCharacter::FireWeapon()
 	FVector CrosshairWorldPosition, CrosshairWorldDirection;
 	bool bScreenToWorld = UGameplayStatics::DeprojectScreenToWorld(UGameplayStatics::GetPlayerController(this, 0), CrosshairLocation, CrosshairWorldPosition, CrosshairWorldDirection);
 
-	// Perfom line trace from Crosshair location
+	// Perfom line trace from Crosshair Location
 	if (bScreenToWorld)
 	{
 		FHitResult ScreenTraceHit;
@@ -551,6 +553,9 @@ void ABaseCharacter::FireWeapon()
 	// TODO : Play hipfire animation
 	MainAnimInstance->Montage_Play(HipFireMontage);
 	MainAnimInstance->Montage_JumpToSection(FName("StartFire"));
+
+	// Substract 1 from the Weapon's ammo
+	EquippedWeapon->DecrementAmmo();
 }
 
 void ABaseCharacter::ResetJump()
@@ -627,6 +632,18 @@ void ABaseCharacter::SwapWeapon(AWeapon* WeaponToSwap)
 	EquipWeapon(WeaponToSwap);
 	TraceHitItem = nullptr;
 	LastTraceHitItem = nullptr;
+}
+
+void ABaseCharacter::InitializeAmmoMap()
+{
+	AmmoMap.Add(EAmmoType::AssaultRifle, AssaultRifleAmmo);
+	AmmoMap.Add(EAmmoType::Pistol, PistolAmmo);
+}
+
+bool ABaseCharacter::WeaponHasAmmo()
+{
+	if (!EquippedWeapon) return false;
+	return EquippedWeapon->GetAmmo() > 0;
 }
 
 void ABaseCharacter::GetPickupItem(AItem* Item)

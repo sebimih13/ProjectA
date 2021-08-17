@@ -7,7 +7,7 @@
 
 UPickupWidget::UPickupWidget(const FObjectInitializer& ObjectInitializer) : UUserWidget(ObjectInitializer)
 {
-
+	
 }
 
 void UPickupWidget::NativeConstruct()

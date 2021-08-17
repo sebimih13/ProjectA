@@ -22,6 +22,13 @@ enum class EInputType : uint8
 	KeyboardMouse	UMETA(DisplayName = "KeyboardMouse")
 };
 
+UENUM(BlueprintType)
+enum class EAmmoType : uint8
+{
+	AssaultRifle	UMETA(DisplayName = "AssaultRifle"),
+	Pistol			UMETA(DisplayName = "Pistol")
+};
+
 UCLASS()
 class PROJECTA_API ABaseCharacter : public ACharacter
 {
@@ -149,6 +156,9 @@ private:
 	AWeapon* EquippedWeapon;
 	AItem* TraceHitItem;
 
+	/** Ammo System */
+	TMap<EAmmoType, int32> AmmoMap;
+
 public:
 	/** Base turn rate, in deg/sec */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Camera")
@@ -212,6 +222,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
 	float CameraInterpElevation = 50.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
+	int32 AssaultRifleAmmo = 24;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
+	int32 PistolAmmo = 12;
+
 private:
 	/** Calculate Functions */
 	float CalculateGroundedRotationRate() const;
@@ -248,6 +264,12 @@ private:
 	void DropWeapon();
 	void SwapWeapon(AWeapon* WeaponToSwap);
 
+	/** Ammo System */
+	void InitializeAmmoMap();
+
+	/** Check if the weapon has ammo */
+	bool WeaponHasAmmo();
+
 public:
 	/** Adds / Substracts to/from OverlappedItemsCount and updates bShouldTraceForItems */
 	void IncrementOverlappedItemsCount(int8 Amount);
@@ -282,5 +304,7 @@ public:
 	FORCEINLINE float GetAimYawRate() const { return AimYawRate; };
 
 	FORCEINLINE int8 GetOverlappedItemsCount() const { return OverlappedItemsCount; };
+
+	FORCEINLINE AWeapon* GetWeapon() const { return EquippedWeapon; };
 };
 

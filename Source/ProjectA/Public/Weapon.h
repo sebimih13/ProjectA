@@ -32,10 +32,19 @@ private:
 	bool bFalling = false;
 
 public:
-	/** Adds an impulse to the Weapon */
-	void ThrowWeapon();
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Properties")
+	int32 Ammo = 0;
 
 private:
 	void StopFalling();
+
+public:
+	/** Adds an impulse to the Weapon */
+	void ThrowWeapon();
+
+	void DecrementAmmo();
+
+	/** FORCEINLINE Setters / Getters */
+	FORCEINLINE int32 GetAmmo() const { return Ammo; };
 };
 

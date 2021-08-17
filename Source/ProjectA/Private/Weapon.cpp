@@ -54,3 +54,15 @@ void AWeapon::StopFalling()
 	SetItemState(EItemState::Pickup);
 }
 
+void AWeapon::DecrementAmmo()
+{
+	if (Ammo - 1 <= 0)
+	{
+		Ammo = 0;
+	}
+	else
+	{
+		Ammo--;
+	}
+}
+
