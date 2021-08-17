@@ -40,6 +40,9 @@ ABaseCharacter::ABaseCharacter()
 	FollowCamera->bUsePawnControlRotation = false;
 	FollowCamera->FieldOfView = CameraDefaultFOV;
 
+	// Create Left Hand Scene Component
+	LeftHandSceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("LeftHandSceneComponent"));
+
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
@@ -62,9 +65,12 @@ void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	// WeaponMesh->AttachTo(GetMesh(), FName("weapon_slot_r"));
-
+	// Set Anim Instance Reference
 	MainAnimInstance = Cast<UBaseCharacterAnimInstance>(GetMesh()->GetAnimInstance());
+
+	// Configure Left Hand Scene Component
+	FAttachmentTransformRules AttachmentRules(EAttachmentRule::KeepRelative, true);
+	LeftHandSceneComponent->AttachToComponent(GetMesh(), AttachmentRules, FName("hand_l"));
 
 	InitializeAmmoMap();
 	EquipWeapon(SpawnDefaultWeapon());
@@ -125,6 +131,8 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
 	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &ABaseCharacter::InteractButtonPressed);
 	PlayerInputComponent->BindAction("Interact", IE_Released, this, &ABaseCharacter::InteractButtonReleased);
+
+	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &ABaseCharacter::ReloadButtonPressed);
 
 	PlayerInputComponent->BindAction("SwitchInput", IE_Pressed, this, &ABaseCharacter::SwitchInput);
 
@@ -232,17 +240,8 @@ void ABaseCharacter::StopAiming()
 
 void ABaseCharacter::FireButtonPressed()
 {
-	if (!WeaponHasAmmo() || !EquippedWeapon || !GetIsAiming()) return;
-
 	bFireButtonPressed = true;
-	if (MainAnimInstance->GetOverlayState() == EOverlayState::Rifle)
-	{
-		StartFireTimer();
-	}
-	else if (MainAnimInstance->GetOverlayState() == EOverlayState::Pistol1H || MainAnimInstance->GetOverlayState() == EOverlayState::Pistol2H)
-	{
-		FireWeapon();
-	}
+	FireWeapon();
 }
 
 void ABaseCharacter::FireButtonReleased()
@@ -261,6 +260,11 @@ void ABaseCharacter::InteractButtonPressed()
 void ABaseCharacter::InteractButtonReleased()
 {
 
+}
+
+void ABaseCharacter::ReloadButtonPressed()
+{
+	ReloadWeapon();
 }
 
 void ABaseCharacter::SetDefaultOverlay()
@@ -391,9 +395,9 @@ void ABaseCharacter::UpdateCharacterCamera(float DeltaTime)
 		GetFollowCamera()->FieldOfView = FMath::FInterpTo(GetFollowCamera()->FieldOfView, CameraZoomFOV, DeltaTime, CameraFOVInterpSpeed);
 
 		/* TODO :
-		if (EquippedWeapon && EquippedWeapon->GetItemMesh()->DoesSocketExist(FName("Aim")))
+		if (GetWeapon() && GetWeapon()->GetItemMesh()->DoesSocketExist(FName("Aim")))
 		{
-			GetCameraBoom()->SetRelativeLocation(FMath::VInterpTo(GetCameraBoom()->GetRelativeLocation(), EquippedWeapon->GetItemMesh()->GetSocketTransform(FName("Aim"), ERelativeTransformSpace::RTS_Actor).GetLocation(), DeltaTime, CameraLocationInterpSpeed));
+			GetCameraBoom()->SetRelativeLocation(FMath::VInterpTo(GetCameraBoom()->GetRelativeLocation(), GetWeapon()->GetItemMesh()->GetSocketTransform(FName("Aim"), ERelativeTransformSpace::RTS_Actor).GetLocation(), DeltaTime, CameraLocationInterpSpeed));
 			GetFollowCamera()->FieldOfView = FMath::FInterpTo(GetFollowCamera()->FieldOfView, CameraDefaultFOV, DeltaTime, CameraFOVInterpSpeed);
 		}
 		else
@@ -480,29 +484,32 @@ void ABaseCharacter::FinishCrosshairBulletFire()
 
 void ABaseCharacter::StartFireTimer()
 {
-	if (bShouldFire)
-	{
-		FireWeapon();
-		bShouldFire = false;
-		GetWorldTimerManager().SetTimer(AutomaticFireTimer, this, &ABaseCharacter::AutomaticFireReset, AutomaticFireRate);
-	}
+	CombatState = ECombatState::Firing;
+	GetWorldTimerManager().SetTimer(AutomaticFireTimer, this, &ABaseCharacter::AutomaticFireReset, AutomaticFireRate);
 }
 
 void ABaseCharacter::AutomaticFireReset()
 {
-	if (!WeaponHasAmmo()) return;
-
-	bShouldFire = true;
 	GetWorldTimerManager().ClearTimer(AutomaticFireTimer);
-	
-	if (bFireButtonPressed)
+	CombatState = ECombatState::Normal;
+
+	if (WeaponHasAmmo())
 	{
-		StartFireTimer();
+		if (bFireButtonPressed)
+		{
+			FireWeapon();
+		}
+	}
+	else
+	{
+		ReloadWeapon();
 	}
 }
 
 void ABaseCharacter::FireWeapon()
 {
+	if (!WeaponHasAmmo() || !GetWeapon() || !GetIsAiming() || CombatState != ECombatState::Normal) return;
+
 	// Get viewport size
 	FVector2D ViewportSize;
 	if (GEngine && GEngine->GameViewport)
@@ -533,20 +540,21 @@ void ABaseCharacter::FireWeapon()
 			BeamEndPoint = ScreenTraceHit.Location;
 		}
 
-		UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BeamParticles, EquippedWeapon->GetItemMesh()->GetSocketTransform(FName("MuzzleFlash")));
+		UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BeamParticles, GetWeapon()->GetItemMesh()->GetSocketTransform(FName("MuzzleFlash")));
 		if (Beam)
 		{
 			Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
 		}
 	}
 
-	// Play weapon animation  TODO - MOVE ANIMATIONS TO WEAPON CLASS
+	/* Play weapon animation  TODO - MOVE ANIMATIONS TO WEAPON CLASS
 	switch (MainAnimInstance->GetOverlayState())
 	{
-	case EOverlayState::Pistol1H: EquippedWeapon->GetItemMesh()->PlayAnimation(PistolFire, false); break;
-	case EOverlayState::Pistol2H: EquippedWeapon->GetItemMesh()->PlayAnimation(PistolFire, false);	break;
-	case EOverlayState::Rifle:	  EquippedWeapon->GetItemMesh()->PlayAnimation(RifleFire, false);	break;
+	case EOverlayState::Pistol1H: GetWeapon()->GetItemMesh()->PlayAnimation(PistolFire, false); break;
+	case EOverlayState::Pistol2H: GetWeapon()->GetItemMesh()->PlayAnimation(PistolFire, false);	break;
+	case EOverlayState::Rifle:	  GetWeapon()->GetItemMesh()->PlayAnimation(RifleFire, false);	break;
 	}
+	*/
 
 	StartCrosshairBulletFire();
 
@@ -555,7 +563,13 @@ void ABaseCharacter::FireWeapon()
 	MainAnimInstance->Montage_JumpToSection(FName("StartFire"));
 
 	// Substract 1 from the Weapon's ammo
-	EquippedWeapon->DecrementAmmo();
+	GetWeapon()->DecrementAmmo();
+
+	// Auto Firing
+	if (MainAnimInstance->GetOverlayState() == EOverlayState::Rifle)
+	{
+		StartFireTimer();
+	}
 }
 
 void ABaseCharacter::ResetJump()
@@ -611,18 +625,18 @@ void ABaseCharacter::EquipWeapon(AWeapon* WeaponToEquip)
 		WeaponToEquip->AttachToComponent(GetMesh(), AttachmentRules, FName("weapon_slot_r"));
 
 		EquippedWeapon = WeaponToEquip;
-		EquippedWeapon->SetItemState(EItemState::Equipped);
+		GetWeapon()->SetItemState(EItemState::Equipped);
 	}
 }
 
 void ABaseCharacter::DropWeapon()
 {
-	if (EquippedWeapon)
+	if (GetWeapon())
 	{
 		FDetachmentTransformRules DetachmentRules(EDetachmentRule::KeepWorld, true);
-		EquippedWeapon->GetItemMesh()->DetachFromComponent(DetachmentRules);
-		EquippedWeapon->SetItemState(EItemState::Falling);
-		EquippedWeapon->ThrowWeapon();
+		GetWeapon()->GetItemMesh()->DetachFromComponent(DetachmentRules);
+		GetWeapon()->SetItemState(EItemState::Falling);
+		GetWeapon()->ThrowWeapon();
 	}
 }
 
@@ -634,6 +648,47 @@ void ABaseCharacter::SwapWeapon(AWeapon* WeaponToSwap)
 	LastTraceHitItem = nullptr;
 }
 
+void ABaseCharacter::ReloadWeapon()
+{
+	if (CombatState != ECombatState::Normal || !GetWeapon()) return;
+
+	if (CarryingAmmo())
+	{
+		CombatState = ECombatState::Reloading;
+		MainAnimInstance->Montage_Play(ReloadMontage);
+		MainAnimInstance->Montage_JumpToSection(EquippedWeapon->GetReloadMontageSection());
+	}
+}
+
+void ABaseCharacter::FinishReloading()
+{
+	CombatState = ECombatState::Normal;
+
+	if (!GetWeapon()) return;
+
+	EAmmoType AmmoType = GetWeapon()->GetAmmoType();
+
+	// Update the Ammo Map
+	if (AmmoMap.Contains(AmmoType))
+	{
+		int32& CarriedAmmo = AmmoMap[AmmoType];
+		const int32 MagEmptySpace = GetWeapon()->GetAmmoMagazineCapacity() - GetWeapon()->GetAmmo();
+
+		if (MagEmptySpace > CarriedAmmo)
+		{
+			// Reload the magazine with all the ammo we have
+			GetWeapon()->AddAmmo(CarriedAmmo);
+			CarriedAmmo = 0;
+		}
+		else
+		{
+			// Reload the max magazine capacity
+			GetWeapon()->AddAmmo(MagEmptySpace);
+			CarriedAmmo -= MagEmptySpace;
+		}
+	}
+}
+
 void ABaseCharacter::InitializeAmmoMap()
 {
 	AmmoMap.Add(EAmmoType::AssaultRifle, AssaultRifleAmmo);
@@ -642,8 +697,20 @@ void ABaseCharacter::InitializeAmmoMap()
 
 bool ABaseCharacter::WeaponHasAmmo()
 {
-	if (!EquippedWeapon) return false;
-	return EquippedWeapon->GetAmmo() > 0;
+	if (!GetWeapon()) return false;
+	return GetWeapon()->GetAmmo() > 0;
+}
+
+bool ABaseCharacter::CarryingAmmo()
+{
+	if (!GetWeapon()) return false;
+
+	EAmmoType AmmoType = GetWeapon()->GetAmmoType();
+	if (AmmoMap.Contains(AmmoType))
+	{
+		return AmmoMap[AmmoType] > 0;
+	}
+	return false;
 }
 
 void ABaseCharacter::GetPickupItem(AItem* Item)

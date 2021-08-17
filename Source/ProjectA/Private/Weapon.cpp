@@ -13,6 +13,16 @@ void AWeapon::BeginPlay()
 
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
+	switch (WeaponType)
+	{
+	case EWeaponType::AssaultRifle:		ReloadMontageSection = FName("ReloadRifle");			break;
+	case EWeaponType::Pistol:			ReloadMontageSection = FName("ReloadPistol");			break;
+	case EWeaponType::Shotgun:			ReloadMontageSection = FName("ReloadShotgun");			break;
+	case EWeaponType::Sniper:			ReloadMontageSection = FName("ReloadSniper");			break;
+	case EWeaponType::GrenadeLauncher:	ReloadMontageSection = FName("ReloadGrenadeLauncher");	break;
+	case EWeaponType::RocketLauncher:	ReloadMontageSection = FName("ReloadRocketLauncher");	break;
+	}
 }
 
 void AWeapon::Tick(float DeltaTime)
@@ -64,5 +74,10 @@ void AWeapon::DecrementAmmo()
 	{
 		Ammo--;
 	}
+}
+
+void AWeapon::AddAmmo(int32 Amount)
+{
+	Ammo += Amount;
 }
 

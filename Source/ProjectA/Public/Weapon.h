@@ -9,6 +9,24 @@
 /** Forward Declarations */
 
 
+UENUM(BlueprintType)
+enum class EWeaponType : uint8
+{
+	AssaultRifle		UMETA(DisplayName = "AssaultRifle"),
+	Pistol				UMETA(DisplayName = "Pistol"),
+	Shotgun				UMETA(DisplayName = "Shotgun"),
+	Sniper				UMETA(DisplayName = "Sniper"),
+	GrenadeLauncher		UMETA(DisplayName = "GrenadeLauncher"),
+	RocketLauncher		UMETA(DisplayName = "RocketLauncher")
+};
+
+UENUM(BlueprintType)
+enum class EAmmoType : uint8
+{
+	AssaultRifle	UMETA(DisplayName = "AssaultRifle"),
+	Pistol			UMETA(DisplayName = "Pistol")
+};
+
 UCLASS()
 class PROJECTA_API AWeapon : public AItem
 {
@@ -31,11 +49,20 @@ private:
 	float ThrowWeaponTime = 0.7f;
 	bool bFalling = false;
 
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Properties")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	EWeaponType WeaponType = EWeaponType::AssaultRifle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	EAmmoType AmmoType = EAmmoType::AssaultRifle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
 	int32 Ammo = 0;
 
-private:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	int32 AmmoMagazineCapacity = 32;
+
+	FName ReloadMontageSection = FName("ReloadRifle");
+
 	void StopFalling();
 
 public:
@@ -44,7 +71,13 @@ public:
 
 	void DecrementAmmo();
 
+	void AddAmmo(int32 Amount);
+
 	/** FORCEINLINE Setters / Getters */
+	FORCEINLINE EWeaponType GetWeaponType() const { return WeaponType; };
+	FORCEINLINE EAmmoType GetAmmoType() const { return AmmoType; };
 	FORCEINLINE int32 GetAmmo() const { return Ammo; };
+	FORCEINLINE int32 GetAmmoMagazineCapacity() const { return AmmoMagazineCapacity; };
+	FORCEINLINE FName GetReloadMontageSection() const { return ReloadMontageSection; };
 };
 

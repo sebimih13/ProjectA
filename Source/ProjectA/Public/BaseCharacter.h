@@ -14,6 +14,8 @@ class UCurveFloat;
 class AItem;
 class AWeapon;
 
+enum class EAmmoType : uint8;
+
 /** TODO : Put this in character controller */
 UENUM(BlueprintType)
 enum class EInputType : uint8
@@ -23,10 +25,11 @@ enum class EInputType : uint8
 };
 
 UENUM(BlueprintType)
-enum class EAmmoType : uint8
+enum class ECombatState : uint8
 {
-	AssaultRifle	UMETA(DisplayName = "AssaultRifle"),
-	Pistol			UMETA(DisplayName = "Pistol")
+	Normal			UMETA(DisplayName = "Normal"),
+	Firing			UMETA(DisplayName = "Firing"),
+	Reloading		UMETA(DisplayName = "Reloading")
 };
 
 UCLASS()
@@ -85,6 +88,9 @@ protected:
 	void InteractButtonPressed();
 	void InteractButtonReleased();
 
+	/** Called for reloading the weapon */
+	void ReloadButtonPressed();
+
 	/** Switch Weapons */
 	void SetDefaultOverlay();
 	void SetRifleOverlay();
@@ -102,6 +108,10 @@ private:
 	/** Follow Camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
+
+	/** Scene Component to attach to the Character's hand during reloading */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	USceneComponent* LeftHandSceneComponent;
 
 private:
 	/** References */
@@ -136,7 +146,6 @@ private:
 
 	/** Automatic Fire */
 	bool bFireButtonPressed = false;
-	bool bShouldFire = true;
 	float AutomaticFireRate = 0.1f;
 	FTimerHandle AutomaticFireTimer;
 
@@ -156,8 +165,8 @@ private:
 	AWeapon* EquippedWeapon;
 	AItem* TraceHitItem;
 
-	/** Ammo System */
-	TMap<EAmmoType, int32> AmmoMap;
+	/** Combat State of the Character */
+	ECombatState CombatState = ECombatState::Normal;
 
 public:
 	/** Base turn rate, in deg/sec */
@@ -202,6 +211,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
 	UAnimMontage* HipFireMontage;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
+	UAnimMontage* ReloadMontage;
+
 	/** Particles spawned upon bullet impact */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
 	UParticleSystem* ImpactParticles;
@@ -227,6 +239,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
 	int32 PistolAmmo = 12;
+
+	/** Ammo System */
+	TMap<EAmmoType, int32> AmmoMap;
 
 private:
 	/** Calculate Functions */
@@ -263,12 +278,16 @@ private:
 	void EquipWeapon(AWeapon* WeaponToEquip);
 	void DropWeapon();
 	void SwapWeapon(AWeapon* WeaponToSwap);
+	void ReloadWeapon();
 
 	/** Ammo System */
 	void InitializeAmmoMap();
 
 	/** Check if the weapon has ammo */
 	bool WeaponHasAmmo();
+
+	/** Check to see if we have ammo of the EquippedWeapon's ammo type */
+	bool CarryingAmmo();
 
 public:
 	/** Adds / Substracts to/from OverlappedItemsCount and updates bShouldTraceForItems */
@@ -278,9 +297,12 @@ public:
 	void GetPickupItem(AItem* Item);
 	FVector GetCameraInterpLocation() const;
 
+	void FinishReloading();
+
 	/** FORCEINLINE Setters / Getters */
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; };
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; };
+	FORCEINLINE USceneComponent* GetLeftHandSceneComponent() const { return LeftHandSceneComponent; };
 
 	FORCEINLINE EInputType GetInputType() const { return InputType; };
 	FORCEINLINE void SetInputType(EInputType Type) { InputType = Type; };

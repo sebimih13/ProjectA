@@ -108,10 +108,13 @@ class PROJECTA_API UBaseCharacterAnimInstance : public UAnimInstance
 	GENERATED_BODY()
 
 public:
+	/** Constructor */
 	UBaseCharacterAnimInstance();
 
+	/** Begin Play */
 	virtual void NativeInitializeAnimation() override;
 
+	/** Tick */
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 
 public:
