@@ -10,6 +10,7 @@
 class UBoxComponent;
 class UWidgetComponent;
 class USphereComponent;
+class ABaseCharacter;
 
 UENUM(BlueprintType)
 enum class EItemState : uint8
@@ -62,8 +63,28 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties")
 	int32 DollarsCount = 1;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	UCurveFloat* CurveItemZ = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	UCurveFloat* CurveItemScale = nullptr;
+
+	/** Duration of the curve and timer */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	float ZCurveTime = 0.7f;
+
 private:
+	/** References */
+	ABaseCharacter* Character;
+
 	EItemState ItemState = EItemState::Pickup;
+
+	/** Plays when we start interping */
+	FTimerHandle ItemInterpTimer;
+	bool bInterping = false;
+
+	/** Initial Yaw Offset between the camera and the interping item */
+	float InterpInitialYawOffset = 0.0f;
 
 protected:
 	UFUNCTION()
@@ -75,7 +96,15 @@ protected:
 private:
 	void SetItemProperties();
 
+	/** Called when ItemInterpTimer is finished */
+	void FinishInterping();
+
+	/** Handles item interpolation in the EquipInterping state */
+	void ItemInterping(float DeltaTime);
+		 
 public:
+	void StartItemCurve(ABaseCharacter* BaseCharacter);
+
 	/** FORCEINLINE Setters / Getters */
 	FORCEINLINE USkeletalMeshComponent* GetItemMesh() const { return ItemMesh; };
 	FORCEINLINE UBoxComponent* GetCollisionBox() const { return CollisionBox; };

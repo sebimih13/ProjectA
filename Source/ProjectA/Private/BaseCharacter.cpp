@@ -252,8 +252,7 @@ void ABaseCharacter::InteractButtonPressed()
 {
 	if (TraceHitItem)
 	{
-		AWeapon* TraceHitWeapon = Cast<AWeapon>(TraceHitItem);
-		SwapWeapon(TraceHitWeapon);
+		TraceHitItem->StartItemCurve(this);
 	}
 }
 
@@ -628,6 +627,20 @@ void ABaseCharacter::SwapWeapon(AWeapon* WeaponToSwap)
 	EquipWeapon(WeaponToSwap);
 	TraceHitItem = nullptr;
 	LastTraceHitItem = nullptr;
+}
+
+void ABaseCharacter::GetPickupItem(AItem* Item)
+{
+	AWeapon* Weapon = Cast<AWeapon>(Item);
+	if (Weapon)
+	{
+		SwapWeapon(Weapon);
+	}
+}
+
+FVector ABaseCharacter::GetCameraInterpLocation() const
+{
+	return GetFollowCamera()->GetComponentLocation() + GetFollowCamera()->GetForwardVector() * CameraInterpDistance + FVector(0.0f, 0.0f, CameraInterpElevation);
 }
 
 void ABaseCharacter::IncrementOverlappedItemsCount(int8 Amount)

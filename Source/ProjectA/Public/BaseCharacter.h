@@ -10,6 +10,7 @@
 class USpringArmComponent;
 class UCameraComponent;
 class UBaseCharacterAnimInstance;
+class UCurveFloat;
 class AItem;
 class AWeapon;
 
@@ -182,32 +183,34 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Movement")
 	float CrouchSpeed = 200.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapons")
-	USkeletalMesh* PistolMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapons")
-	USkeletalMesh* RifleMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapons")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
 	UAnimationAsset* PistolFire;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapons")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
 	UAnimationAsset* RifleFire;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapons")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
 	UAnimMontage* HipFireMontage;
 
 	/** Particles spawned upon bullet impact */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapons")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
 	UParticleSystem* ImpactParticles;
 
 	/** Trail for bullets */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapons")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
 	UParticleSystem* BeamParticles;
 
 	/** Default Weapon to spawn with Character */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration|Weapons")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration|Weapon")
 	TSubclassOf<AWeapon> DefaultWeaponClass;
+
+	/** Distance outward from the camera for the interp destination */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
+	float CameraInterpDistance = 200.0f;
+
+	/** Distance upward from the camera for the interp destination */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
+	float CameraInterpElevation = 50.0f;
 
 private:
 	/** Calculate Functions */
@@ -248,6 +251,10 @@ private:
 public:
 	/** Adds / Substracts to/from OverlappedItemsCount and updates bShouldTraceForItems */
 	void IncrementOverlappedItemsCount(int8 Amount);
+
+	/** Item System */
+	void GetPickupItem(AItem* Item);
+	FVector GetCameraInterpLocation() const;
 
 	/** FORCEINLINE Setters / Getters */
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; };
