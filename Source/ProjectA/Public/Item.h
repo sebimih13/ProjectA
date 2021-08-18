@@ -10,6 +10,7 @@
 class UBoxComponent;
 class UWidgetComponent;
 class USphereComponent;
+class USoundCue;
 class ABaseCharacter;
 
 UENUM(BlueprintType)
@@ -72,6 +73,14 @@ public:
 	/** Duration of the curve and timer */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
 	float ZCurveTime = 0.7f;
+
+	/** Sound played when Item is picked up */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	USoundCue* PickupSound;
+
+	/** Sound played when Item is equipped */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	USoundCue* EquipSound;
 
 private:
 	/** References */

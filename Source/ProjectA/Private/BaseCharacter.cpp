@@ -10,6 +10,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Sound/SoundCue.h"
 
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
@@ -254,6 +255,11 @@ void ABaseCharacter::InteractButtonPressed()
 	if (TraceHitItem)
 	{
 		TraceHitItem->StartItemCurve(this);
+
+		if (TraceHitItem->PickupSound)
+		{
+			UGameplayStatics::PlaySound2D(this, TraceHitItem->PickupSound);
+		}
 	}
 }
 
@@ -715,6 +721,11 @@ bool ABaseCharacter::CarryingAmmo()
 
 void ABaseCharacter::GetPickupItem(AItem* Item)
 {
+	if (Item->EquipSound)
+	{
+		UGameplayStatics::PlaySound2D(this, Item->EquipSound);
+	}
+
 	AWeapon* Weapon = Cast<AWeapon>(Item);
 	if (Weapon)
 	{
