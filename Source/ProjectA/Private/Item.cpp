@@ -5,9 +5,10 @@
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Sound/SoundCue.h"
+#include "Kismet/GameplayStatics.h"
 
 #include "BaseCharacter.h"
-#include "PickupWidget.h"
 
 // Sets default values
 AItem::AItem()
@@ -15,20 +16,14 @@ AItem::AItem()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	ItemMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ItemMesh"));
-	SetRootComponent(ItemMesh);
-
 	CollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"));
-	CollisionBox->SetupAttachment(ItemMesh);
 	CollisionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 
-	PickupWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("PickupWidget"));
-	PickupWidgetComponent->SetupAttachment(GetRootComponent());
-
 	AreaSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AreaSphere"));
-	AreaSphere->SetupAttachment(GetRootComponent());
 	AreaSphere->SetSphereRadius(200.0f);
+
+	PickupWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("PickupWidget"));
 }
 
 // Called when the game starts or when spawned
@@ -42,13 +37,6 @@ void AItem::BeginPlay()
 	// Setup overlap for Area Sphere
 	AreaSphere->OnComponentBeginOverlap.AddDynamic(this, &AItem::OnSphereOverlap);
 	AreaSphere->OnComponentEndOverlap.AddDynamic(this, &AItem::OnSphereEndOverlap);
-
-	// Set Pickup Widget Reference to this class
-	UPickupWidget* PickupWidget = Cast<UPickupWidget>(PickupWidgetComponent->GetUserWidgetObject());
-	if (PickupWidget)
-	{
-		PickupWidget->Item = this;
-	}
 
 	// Set Item Properties based on Item State
 	SetItemProperties();
@@ -99,27 +87,16 @@ void AItem::SetItemProperties()
 	switch (ItemState)
 	{
 	case EItemState::Pickup:
-		ItemMesh->SetSimulatePhysics(false);
-		ItemMesh->SetEnableGravity(false);
-		ItemMesh->SetVisibility(true);
-		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
 		AreaSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
 		AreaSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 
 		CollisionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+		CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
 		CollisionBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		break;
 
 	case EItemState::Equipped:
-		ItemMesh->SetSimulatePhysics(false);
-		ItemMesh->SetEnableGravity(false);
-		ItemMesh->SetVisibility(true);
-		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
 		AreaSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
@@ -130,12 +107,6 @@ void AItem::SetItemProperties()
 		break;
 
 	case EItemState::Falling:
-		ItemMesh->SetSimulatePhysics(true);
-		ItemMesh->SetEnableGravity(true);
-		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		ItemMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
-		ItemMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-
 		AreaSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
@@ -144,12 +115,6 @@ void AItem::SetItemProperties()
 		break;
 
 	case EItemState::EquipInterping:
-		ItemMesh->SetSimulatePhysics(false);
-		ItemMesh->SetEnableGravity(false);
-		ItemMesh->SetVisibility(true);
-		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
 		AreaSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
@@ -166,6 +131,12 @@ void AItem::StartItemCurve(ABaseCharacter* BaseCharacter)
 	Character = BaseCharacter;
 	SetItemState(EItemState::EquipInterping);
 
+	PlayPickupSound();
+
+	// Add 1 for the ItemCount for this InterLocation struct
+	InterpLocationIndex = Character->GetInterpLocationIndex();
+	Character->IncrementInterpLocationItemCount(InterpLocationIndex, 1);
+
 	bInterping = true;
 	GetWorldTimerManager().SetTimer(ItemInterpTimer, this, &AItem::FinishInterping, ZCurveTime);
 
@@ -178,7 +149,9 @@ void AItem::FinishInterping()
 {
 	if (Character)
 	{
+		PlayEquipSound();
 		Character->GetPickupItem(this);
+		Character->IncrementInterpLocationItemCount(InterpLocationIndex, -1);
 	}
 
 	// Set scale back to normal
@@ -199,7 +172,7 @@ void AItem::ItemInterping(float DeltaTime)
 		const float CurveValue = CurveItemZ->GetFloatValue(ElapsedTime);
 
 		FVector ItemLocation = GetActorLocation();
-		const FVector& CameraInterpLocation = Character->GetCameraInterpLocation();
+		const FVector& CameraInterpLocation = GetInterpLocation();
 
 		// Scale factor to multiply with Curve Value
 		const float DeltaZ = FVector(0.0f, 0.0f, (CameraInterpLocation - ItemLocation).Z).Z;
@@ -224,6 +197,43 @@ void AItem::ItemInterping(float DeltaTime)
 		{
 			const float ScaleCurveValue = CurveItemScale->GetFloatValue(ElapsedTime);
 			SetActorScale3D(FVector(ScaleCurveValue, ScaleCurveValue, ScaleCurveValue));
+		}
+	}
+}
+
+FVector AItem::GetInterpLocation()
+{
+	if (!Character) return FVector::ZeroVector;
+
+	switch (ItemType)
+	{
+	case EItemType::Ammo:	return Character->GetInterpLocation(InterpLocationIndex);	break;
+	case EItemType::Weapon:	return Character->GetInterpLocation(0);						break;
+	}
+
+	return FVector::ZeroVector;
+}
+
+void AItem::PlayPickupSound()
+{
+	if (Character && Character->GetShouldPlayPickupSound())
+	{
+		Character->StartPickupSoundTimer();
+		if (PickupSound)
+		{
+			UGameplayStatics::PlaySound2D(this, PickupSound);
+		}
+	}
+}
+
+void AItem::PlayEquipSound()
+{
+	if (Character && Character->GetShouldPlayEquipSound())
+	{
+		Character->StartEquipSoundTimer();
+		if (EquipSound)
+		{
+			UGameplayStatics::PlaySound2D(this, EquipSound);
 		}
 	}
 }

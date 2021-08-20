@@ -7,9 +7,9 @@
 #include "PickupWidget.generated.h"
 
 /** Forward Declarations */
-class AItem;
 class UTextBlock;
 class UImage;
+class AWeapon;
 
 UCLASS()
 class PROJECTA_API UPickupWidget : public UUserWidget
@@ -23,15 +23,19 @@ public:
 protected:
 	virtual void NativeConstruct() override;
 
-public:
+private:
 	/** References */
-	AItem* Item;
+	AWeapon* Weapon;
 
+public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
 	UTextBlock* ItemNameText;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
 	UTextBlock* AmountText;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
+	UImage* AmmoImage;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
 	UImage* DollarIcon1;
@@ -47,5 +51,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
 	UImage* DollarIcon5;
+
+public:
+	/** FORCEINLINE Setters / Getters */
+	void SetWeaponReference(AWeapon* WeaponReference) { Weapon = WeaponReference; };
 };
 

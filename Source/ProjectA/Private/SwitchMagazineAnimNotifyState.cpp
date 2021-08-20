@@ -12,10 +12,10 @@ void USwitchMagazineAnimNotifyState::NotifyBegin(USkeletalMeshComponent* MeshCom
 	ABaseCharacter* Character = Cast<ABaseCharacter>(MeshComp->GetOwner());
 	if (Character)
 	{
-		int32 ClipBoneIndex = Character->GetWeapon()->GetItemMesh()->GetBoneIndex(FName("Clip_Bone"));
-		Character->GetLeftHandSceneComponent()->SetWorldTransform(Character->GetWeapon()->GetItemMesh()->GetBoneTransform(ClipBoneIndex));
+		int32 ClipBoneIndex = Character->GetWeapon()->GetWeaponMesh()->GetBoneIndex(FName("Clip_Bone"));
+		Character->GetLeftHandSceneComponent()->SetWorldTransform(Character->GetWeapon()->GetWeaponMesh()->GetBoneTransform(ClipBoneIndex));
 
-		UWeaponAnimInstance* WeaponAnimInstance = Cast<UWeaponAnimInstance>(Character->GetWeapon()->GetItemMesh()->GetAnimInstance());
+		UWeaponAnimInstance* WeaponAnimInstance = Cast<UWeaponAnimInstance>(Character->GetWeapon()->GetWeaponMesh()->GetAnimInstance());
 		if (WeaponAnimInstance)
 		{
 			WeaponAnimInstance->bMovingClip = true;
@@ -31,7 +31,7 @@ void USwitchMagazineAnimNotifyState::NotifyTick(USkeletalMeshComponent* MeshComp
 	ABaseCharacter* Character = Cast<ABaseCharacter>(MeshComp->GetOwner());
 	if (Character)
 	{
-		UWeaponAnimInstance* WeaponAnimInstance = Cast<UWeaponAnimInstance>(Character->GetWeapon()->GetItemMesh()->GetAnimInstance());
+		UWeaponAnimInstance* WeaponAnimInstance = Cast<UWeaponAnimInstance>(Character->GetWeapon()->GetWeaponMesh()->GetAnimInstance());
 		if (WeaponAnimInstance)
 		{
 			WeaponAnimInstance->bMovingClip = true;
@@ -47,7 +47,7 @@ void USwitchMagazineAnimNotifyState::NotifyEnd(USkeletalMeshComponent* MeshComp,
 	ABaseCharacter* Character = Cast<ABaseCharacter>(MeshComp->GetOwner());
 	if (Character)
 	{
-		UWeaponAnimInstance* WeaponAnimInstance = Cast<UWeaponAnimInstance>(Character->GetWeapon()->GetItemMesh()->GetAnimInstance());
+		UWeaponAnimInstance* WeaponAnimInstance = Cast<UWeaponAnimInstance>(Character->GetWeapon()->GetWeaponMesh()->GetAnimInstance());
 		if (WeaponAnimInstance)
 		{
 			WeaponAnimInstance->bMovingClip = false;

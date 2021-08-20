@@ -4,17 +4,17 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Headers/AmmoType.h"
 #include "BaseCharacter.generated.h"
 
 /** Forward Declarations */
 class USpringArmComponent;
 class UCameraComponent;
-class UBaseCharacterAnimInstance;
 class UCurveFloat;
+class UBaseCharacterAnimInstance;
 class AItem;
 class AWeapon;
-
-enum class EAmmoType : uint8;
+class AAmmo;
 
 /** TODO : Put this in character controller */
 UENUM(BlueprintType)
@@ -30,6 +30,28 @@ enum class ECombatState : uint8
 	Normal			UMETA(DisplayName = "Normal"),
 	Firing			UMETA(DisplayName = "Firing"),
 	Reloading		UMETA(DisplayName = "Reloading")
+};
+
+USTRUCT(BlueprintType)
+struct FInterpLocation
+{
+	GENERATED_BODY()
+
+public:
+	/** Constructors */
+	FInterpLocation() {}
+
+	FInterpLocation(USceneComponent* SceneComp)
+	{
+		SceneComponent = SceneComp;
+	}
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	USceneComponent* SceneComponent = nullptr;
+
+	// Number of items interping to this scene component location
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	int32 ItemCount = 0;
 };
 
 UCLASS()
@@ -77,8 +99,8 @@ protected:
 	void StartCrouch();
 
 	/** Called for aiming */
-	void StartAiming();
-	void StopAiming();
+	void AimingButtonPressed();
+	void AimingButtonReleased();
 
 	/** Called for firing the weapon */
 	void FireButtonPressed();
@@ -113,6 +135,27 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	USceneComponent* LeftHandSceneComponent;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item", meta = (AllowPrivateAccess = "true"))
+	USceneComponent* InterpWeaponComponent;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item", meta = (AllowPrivateAccess = "true"))
+	USceneComponent* InterpItem1Component;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item", meta = (AllowPrivateAccess = "true"))
+	USceneComponent* InterpItem2Component;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item", meta = (AllowPrivateAccess = "true"))
+	USceneComponent* InterpItem3Component;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item", meta = (AllowPrivateAccess = "true"))
+	USceneComponent* InterpItem4Component;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item", meta = (AllowPrivateAccess = "true"))
+	USceneComponent* InterpItem5Component;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item", meta = (AllowPrivateAccess = "true"))
+	USceneComponent* InterpItem6Component;
+
 private:
 	/** References */
 	UBaseCharacterAnimInstance* MainAnimInstance;
@@ -138,6 +181,15 @@ private:
 
 	/** Is character aiming / is Aim Button pressed */
 	bool bIsAiming = false;
+	/** Jumping */
+	FTimerHandle JumpingTimer;
+
+	/** Crouching */
+	float StandingCapsuleHalfHeight = 88.0f;
+	float CrouchingCapsuleHalfHeight = 60.0f;
+
+	/** Aiming System */
+	bool bAimingButtonPressed = false;
 
 	/** Crosshair Firing */
 	bool bIsFiringBullet = false;
@@ -148,9 +200,6 @@ private:
 	bool bFireButtonPressed = false;
 	float AutomaticFireRate = 0.1f;
 	FTimerHandle AutomaticFireTimer;
-
-	/** Jumping */
-	FTimerHandle JumpingTimer;
 
 	/** Cached Variables */
 	FVector PreviousVelocity = FVector::ZeroVector;
@@ -167,6 +216,15 @@ private:
 
 	/** Combat State of the Character */
 	ECombatState CombatState = ECombatState::Normal;
+
+	/** Items Interping Locations */
+	TArray<FInterpLocation> InterpLocations;
+
+	FTimerHandle PickupSoundTimer;
+	bool bShouldPlayPickupSound = true;
+
+	FTimerHandle EquipSoundTimer;
+	bool bShouldPlayEquipSound = true;
 
 public:
 	/** Base turn rate, in deg/sec */
@@ -240,6 +298,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
 	int32 PistolAmmo = 12;
 
+	/** Time to wait before we can play another Pickup Sound */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Item")
+	float PickupSoundResetTime = 0.2f;
+
+	/** Time to wait before we can play another Equip Sound */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Item")
+	float EquipSoundResetTime = 0.2f;
+
 	/** Ammo System */
 	TMap<EAmmoType, int32> AmmoMap;
 
@@ -270,6 +336,10 @@ private:
 	/** Jumping */
 	void ResetJump();
 
+	/** Aiming System */
+	void StartAiming();
+	void StopAiming();
+
 	/** Performs a line trace under crosshairs */
 	bool TraceUnderCrosshairs(FHitResult& HitResult);
 
@@ -282,12 +352,20 @@ private:
 
 	/** Ammo System */
 	void InitializeAmmoMap();
-
-	/** Check if the weapon has ammo */
 	bool WeaponHasAmmo();
+	void PickupAmmo(AAmmo* Ammo);
 
 	/** Check to see if we have ammo of the EquippedWeapon's ammo type */
 	bool CarryingAmmo();
+
+	/** Interps Capsule Hald Height when crouching/standing */
+	void InterpCapsuleHalfHeight(float DeltaTime);
+
+	void InitializeInterpLocations();
+
+	/** Limit Sounds */
+	void ResetPickupSoundTimer();
+	void ResetEquipSoundTimer();
 
 public:
 	/** Adds / Substracts to/from OverlappedItemsCount and updates bShouldTraceForItems */
@@ -295,9 +373,17 @@ public:
 
 	/** Item System */
 	void GetPickupItem(AItem* Item);
-	FVector GetCameraInterpLocation() const;
 
 	void FinishReloading();
+
+	/** Returns the index in InterpLocations[] with the lowest ItemCount */
+	int32 GetInterpLocationIndex();
+	void IncrementInterpLocationItemCount(int32 Index, int32 Amount);
+	FVector GetInterpLocation(int32 Index);
+
+	/** Limit Sounds */
+	void StartPickupSoundTimer();
+	void StartEquipSoundTimer();
 
 	/** FORCEINLINE Setters / Getters */
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; };
@@ -328,5 +414,8 @@ public:
 	FORCEINLINE int8 GetOverlappedItemsCount() const { return OverlappedItemsCount; };
 
 	FORCEINLINE AWeapon* GetWeapon() const { return EquippedWeapon; };
+
+	FORCEINLINE bool GetShouldPlayPickupSound() const { return bShouldPlayPickupSound; };
+	FORCEINLINE bool GetShouldPlayEquipSound() const { return bShouldPlayEquipSound; };
 };
 

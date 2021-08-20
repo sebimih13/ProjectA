@@ -18,9 +18,11 @@
 #include "BaseCharacterAnimInstance.h"
 #include "Item.h"
 #include "Weapon.h"
+#include "Ammo.h"
 
 // TODO : debug
 #include "DrawDebugHelpers.h"
+#include "Components/CapsuleComponent.h"
 
 // Sets default values
 ABaseCharacter::ABaseCharacter()
@@ -43,6 +45,35 @@ ABaseCharacter::ABaseCharacter()
 
 	// Create Left Hand Scene Component
 	LeftHandSceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("LeftHandSceneComponent"));
+
+	// Create Items Locations relative to the camera
+	InterpWeaponComponent = CreateDefaultSubobject<USceneComponent>(TEXT("InterpWeapon"));
+	InterpWeaponComponent->SetupAttachment(GetFollowCamera());
+	InterpWeaponComponent->SetRelativeLocation(FVector(140.0f, -40.0f, 40.0f));
+
+	InterpItem1Component = CreateDefaultSubobject<USceneComponent>(TEXT("InterpItem1"));
+	InterpItem1Component->SetupAttachment(GetFollowCamera());
+	InterpItem1Component->SetRelativeLocation(FVector(140.0f, 30.0f, -40.0f));
+
+	InterpItem2Component = CreateDefaultSubobject<USceneComponent>(TEXT("InterpItem2"));
+	InterpItem2Component->SetupAttachment(GetFollowCamera());
+	InterpItem2Component->SetRelativeLocation(FVector(140.0f, -90.0f, -40.0f));
+
+	InterpItem3Component = CreateDefaultSubobject<USceneComponent>(TEXT("InterpItem3"));
+	InterpItem3Component->SetupAttachment(GetFollowCamera());
+	InterpItem3Component->SetRelativeLocation(FVector(160.0f, -110.0f, -20.0f));
+
+	InterpItem4Component = CreateDefaultSubobject<USceneComponent>(TEXT("InterpItem4"));
+	InterpItem4Component->SetupAttachment(GetFollowCamera());
+	InterpItem4Component->SetRelativeLocation(FVector(160.0f, 50.0f, -20.0f));
+
+	InterpItem5Component = CreateDefaultSubobject<USceneComponent>(TEXT("InterpItem5"));
+	InterpItem5Component->SetupAttachment(GetFollowCamera());
+	InterpItem5Component->SetRelativeLocation(FVector(180.0f, -90.0f, 0.0f));
+
+	InterpItem6Component = CreateDefaultSubobject<USceneComponent>(TEXT("InterpItem6"));
+	InterpItem6Component->SetupAttachment(GetFollowCamera());
+	InterpItem6Component->SetRelativeLocation(FVector(180.0f, 30.0f, 0.0f));
 
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
@@ -74,6 +105,8 @@ void ABaseCharacter::BeginPlay()
 	LeftHandSceneComponent->AttachToComponent(GetMesh(), AttachmentRules, FName("hand_l"));
 
 	InitializeAmmoMap();
+	InitializeInterpLocations();
+
 	EquipWeapon(SpawnDefaultWeapon());
 }
 
@@ -84,6 +117,7 @@ void ABaseCharacter::Tick(float DeltaTime)
 
 	ChangeMovementState();
 	UpdateCharacterInformations(DeltaTime);
+	InterpCapsuleHalfHeight(DeltaTime);
 
 	if (MainAnimInstance->GetMovementState() == EMovementState::Grounded)
 	{
@@ -124,8 +158,8 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ABaseCharacter::StartCrouch);
 
-	PlayerInputComponent->BindAction("Aim", IE_Pressed, this, &ABaseCharacter::StartAiming);
-	PlayerInputComponent->BindAction("Aim", IE_Released, this, &ABaseCharacter::StopAiming);
+	PlayerInputComponent->BindAction("Aim", IE_Pressed, this, &ABaseCharacter::AimingButtonPressed);
+	PlayerInputComponent->BindAction("Aim", IE_Released, this, &ABaseCharacter::AimingButtonReleased);
 
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ABaseCharacter::FireButtonPressed);
 	PlayerInputComponent->BindAction("Fire", IE_Released, this, &ABaseCharacter::FireButtonReleased);
@@ -213,30 +247,27 @@ void ABaseCharacter::StartCrouch()
 		if (MainAnimInstance->GetStance() == EStance::Standing)
 		{
 			MainAnimInstance->SetStance(EStance::Crouching);
-			Crouch();
 		}
 		else
 		{
 			MainAnimInstance->SetStance(EStance::Standing);
-			UnCrouch();
 		}
 	}
 }
 
-void ABaseCharacter::StartAiming()
+void ABaseCharacter::AimingButtonPressed()
 {
-	SetIsAiming(true);
-
-	// TODO : investigate
-	// GetMesh()->SetRelativeRotation(FRotator(0.0f, -80.0f, 0.0f));
+	bAimingButtonPressed = true;
+	if (CombatState != ECombatState::Reloading)
+	{
+		StartAiming();
+	}
 }
 
-void ABaseCharacter::StopAiming()
+void ABaseCharacter::AimingButtonReleased()
 {
-	SetIsAiming(false);
-
-	// TODO : investigate
-	// GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	bAimingButtonPressed = false;
+	StopAiming();
 }
 
 void ABaseCharacter::FireButtonPressed()
@@ -255,11 +286,6 @@ void ABaseCharacter::InteractButtonPressed()
 	if (TraceHitItem)
 	{
 		TraceHitItem->StartItemCurve(this);
-
-		if (TraceHitItem->PickupSound)
-		{
-			UGameplayStatics::PlaySound2D(this, TraceHitItem->PickupSound);
-		}
 	}
 }
 
@@ -546,7 +572,7 @@ void ABaseCharacter::FireWeapon()
 			BeamEndPoint = ScreenTraceHit.Location;
 		}
 
-		UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BeamParticles, GetWeapon()->GetItemMesh()->GetSocketTransform(FName("MuzzleFlash")));
+		UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BeamParticles, GetWeapon()->GetWeaponMesh()->GetSocketTransform(FName("MuzzleFlash")));
 		if (Beam)
 		{
 			Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
@@ -564,7 +590,7 @@ void ABaseCharacter::FireWeapon()
 
 	StartCrosshairBulletFire();
 
-	// TODO : Play hipfire animation
+	// Play hipfire animation
 	MainAnimInstance->Montage_Play(HipFireMontage);
 	MainAnimInstance->Montage_JumpToSection(FName("StartFire"));
 
@@ -582,6 +608,22 @@ void ABaseCharacter::ResetJump()
 {
 	MainAnimInstance->SetJumped(false);
 	GetWorldTimerManager().ClearTimer(JumpingTimer);
+}
+
+void ABaseCharacter::StartAiming()
+{
+	SetIsAiming(true);
+
+	// TODO : investigate
+	// GetMesh()->SetRelativeRotation(FRotator(0.0f, -80.0f, 0.0f));
+}
+
+void ABaseCharacter::StopAiming()
+{
+	SetIsAiming(false);
+
+	// TODO : investigate
+	// GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
 }
 
 bool ABaseCharacter::TraceUnderCrosshairs(FHitResult& HitResult)
@@ -640,7 +682,7 @@ void ABaseCharacter::DropWeapon()
 	if (GetWeapon())
 	{
 		FDetachmentTransformRules DetachmentRules(EDetachmentRule::KeepWorld, true);
-		GetWeapon()->GetItemMesh()->DetachFromComponent(DetachmentRules);
+		GetWeapon()->GetWeaponMesh()->DetachFromComponent(DetachmentRules);
 		GetWeapon()->SetItemState(EItemState::Falling);
 		GetWeapon()->ThrowWeapon();
 	}
@@ -658,8 +700,13 @@ void ABaseCharacter::ReloadWeapon()
 {
 	if (CombatState != ECombatState::Normal || !GetWeapon()) return;
 
-	if (CarryingAmmo())
+	if (CarryingAmmo() && !GetWeapon()->GetClipIsFull())
 	{
+		if (GetIsAiming())
+		{
+			StopAiming();
+		}
+
 		CombatState = ECombatState::Reloading;
 		MainAnimInstance->Montage_Play(ReloadMontage);
 		MainAnimInstance->Montage_JumpToSection(EquippedWeapon->GetReloadMontageSection());
@@ -670,9 +717,14 @@ void ABaseCharacter::FinishReloading()
 {
 	CombatState = ECombatState::Normal;
 
+	if (bAimingButtonPressed)
+	{
+		StartAiming();
+	}
+
 	if (!GetWeapon()) return;
 
-	EAmmoType AmmoType = GetWeapon()->GetAmmoType();
+	const EAmmoType AmmoType = GetWeapon()->GetAmmoType();
 
 	// Update the Ammo Map
 	if (AmmoMap.Contains(AmmoType))
@@ -707,6 +759,19 @@ bool ABaseCharacter::WeaponHasAmmo()
 	return GetWeapon()->GetAmmo() > 0;
 }
 
+void ABaseCharacter::PickupAmmo(AAmmo* Ammo)
+{
+	AmmoMap[Ammo->GetAmmoType()] += Ammo->ItemsCount;
+
+	// If we don't have ammo in the weapon, try reloading
+	if (GetWeapon()->GetAmmoType() == Ammo->GetAmmoType() && GetWeapon()->GetAmmo() == 0)
+	{
+		ReloadWeapon();
+	}
+
+	Ammo->Destroy();
+}
+
 bool ABaseCharacter::CarryingAmmo()
 {
 	if (!GetWeapon()) return false;
@@ -721,21 +786,17 @@ bool ABaseCharacter::CarryingAmmo()
 
 void ABaseCharacter::GetPickupItem(AItem* Item)
 {
-	if (Item->EquipSound)
-	{
-		UGameplayStatics::PlaySound2D(this, Item->EquipSound);
-	}
-
 	AWeapon* Weapon = Cast<AWeapon>(Item);
 	if (Weapon)
 	{
 		SwapWeapon(Weapon);
 	}
-}
 
-FVector ABaseCharacter::GetCameraInterpLocation() const
-{
-	return GetFollowCamera()->GetComponentLocation() + GetFollowCamera()->GetForwardVector() * CameraInterpDistance + FVector(0.0f, 0.0f, CameraInterpElevation);
+	AAmmo* Ammo = Cast<AAmmo>(Item);
+	if (Ammo)
+	{
+		PickupAmmo(Ammo);
+	}
 }
 
 void ABaseCharacter::IncrementOverlappedItemsCount(int8 Amount)
@@ -750,5 +811,86 @@ void ABaseCharacter::IncrementOverlappedItemsCount(int8 Amount)
 		OverlappedItemsCount += Amount;
 		bShouldTraceForItems = true;
 	}
+}
+
+void ABaseCharacter::InterpCapsuleHalfHeight(float DeltaTime)
+{
+	float TargetCapsuleHalfHeight = 0.0f;
+	if (MainAnimInstance->GetStance() == EStance::Standing)
+	{
+		TargetCapsuleHalfHeight = StandingCapsuleHalfHeight;
+	}
+	else if (MainAnimInstance->GetStance() == EStance::Crouching)
+	{
+		TargetCapsuleHalfHeight = CrouchingCapsuleHalfHeight;
+	}
+
+	const float InterpHalfHeight = FMath::FInterpTo(GetCapsuleComponent()->GetScaledCapsuleHalfHeight(), TargetCapsuleHalfHeight, DeltaTime, 20.0f);
+
+	const float DeltaCapsuleHalfHeight = InterpHalfHeight - GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	GetMesh()->AddLocalOffset(FVector(0.0f, 0.0f, -DeltaCapsuleHalfHeight));
+
+	GetCapsuleComponent()->SetCapsuleHalfHeight(InterpHalfHeight);
+}
+
+void ABaseCharacter::InitializeInterpLocations()
+{
+	InterpLocations.Add(FInterpLocation(InterpWeaponComponent));
+
+	InterpLocations.Add(FInterpLocation(InterpItem1Component));
+	InterpLocations.Add(FInterpLocation(InterpItem2Component));
+	InterpLocations.Add(FInterpLocation(InterpItem3Component));
+	InterpLocations.Add(FInterpLocation(InterpItem4Component));
+	InterpLocations.Add(FInterpLocation(InterpItem5Component));
+	InterpLocations.Add(FInterpLocation(InterpItem6Component));
+}
+
+FVector ABaseCharacter::GetInterpLocation(int32 Index)
+{
+	return InterpLocations[Index].SceneComponent->GetComponentLocation();
+}
+
+int32 ABaseCharacter::GetInterpLocationIndex()
+{
+	int32 LowestIndex = 0;
+	int32 LowestCount = INT_MAX;
+	for (int32 i = 1; i < InterpLocations.Num(); i++)
+	{
+		if (InterpLocations[i].ItemCount < LowestCount)
+		{
+			LowestCount = InterpLocations[i].ItemCount;
+			LowestIndex = i;
+		}
+	}
+	return LowestIndex;
+}
+
+void ABaseCharacter::IncrementInterpLocationItemCount(int32 Index, int32 Amount)
+{
+	InterpLocations[Index].ItemCount += Amount;
+}
+
+void ABaseCharacter::StartPickupSoundTimer()
+{
+	bShouldPlayPickupSound = false;
+	GetWorldTimerManager().SetTimer(PickupSoundTimer, this, &ABaseCharacter::ResetPickupSoundTimer, PickupSoundResetTime);
+}
+
+void ABaseCharacter::ResetPickupSoundTimer()
+{
+	bShouldPlayPickupSound = true;
+	GetWorldTimerManager().ClearTimer(PickupSoundTimer);
+}
+
+void ABaseCharacter::StartEquipSoundTimer()
+{
+	bShouldPlayEquipSound = false;
+	GetWorldTimerManager().SetTimer(EquipSoundTimer, this, &ABaseCharacter::ResetEquipSoundTimer, EquipSoundResetTime);
+}
+
+void ABaseCharacter::ResetEquipSoundTimer()
+{
+	bShouldPlayEquipSound = true;
+	GetWorldTimerManager().ClearTimer(EquipSoundTimer);
 }
 

@@ -1,10 +1,22 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Weapon.h"
+#include "Components/BoxComponent.h"
+#include "Components/SphereComponent.h"
+#include "Components/WidgetComponent.h"
+
+#include "PickupWidget.h"
 
 AWeapon::AWeapon()
 {
+	// Create the Weapon Mesh Component
+	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
+	SetRootComponent(WeaponMesh);
 
+	// Attach other components to Weapon Mesh
+	GetCollisionBox()->SetupAttachment(GetRootComponent());
+	GetAreaSphere()->SetupAttachment(GetRootComponent());
+	GetPickupWidget()->SetupAttachment(GetRootComponent());
 }
 
 void AWeapon::BeginPlay()
@@ -13,6 +25,13 @@ void AWeapon::BeginPlay()
 
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
+	// Set Pickup Widget Reference to this class
+	UPickupWidget* PickupWidget = Cast<UPickupWidget>(GetPickupWidget()->GetUserWidgetObject());
+	if (PickupWidget)
+	{
+		PickupWidget->SetWeaponReference(this);
+	}
 
 	switch (WeaponType)
 	{
@@ -31,18 +50,58 @@ void AWeapon::Tick(float DeltaTime)
 
 	if (GetItemState() == EItemState::Falling && bFalling)
 	{
-		const FRotator MeshRotation = FRotator(0.0f, GetItemMesh()->GetComponentRotation().Yaw, 0.0f);
-		GetItemMesh()->SetWorldRotation(MeshRotation, false, nullptr, ETeleportType::TeleportPhysics);
+		const FRotator MeshRotation = FRotator(0.0f, WeaponMesh->GetComponentRotation().Yaw, 0.0f);
+		WeaponMesh->SetWorldRotation(MeshRotation, false, nullptr, ETeleportType::TeleportPhysics);
+	}
+}
+
+void AWeapon::SetItemProperties()
+{
+	Super::SetItemProperties();
+
+	switch (GetItemState())
+	{
+	case EItemState::Pickup:
+		WeaponMesh->SetSimulatePhysics(false);
+		WeaponMesh->SetEnableGravity(false);
+		WeaponMesh->SetVisibility(true);
+		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		break;
+
+	case EItemState::Equipped:
+		WeaponMesh->SetSimulatePhysics(false);
+		WeaponMesh->SetEnableGravity(false);
+		WeaponMesh->SetVisibility(true);
+		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		break;
+
+	case EItemState::Falling:
+		WeaponMesh->SetSimulatePhysics(true);
+		WeaponMesh->SetEnableGravity(true);
+		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		WeaponMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		break;
+
+	case EItemState::EquipInterping:
+		WeaponMesh->SetSimulatePhysics(false);
+		WeaponMesh->SetEnableGravity(false);
+		WeaponMesh->SetVisibility(true);
+		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		break;
 	}
 }
 
 void AWeapon::ThrowWeapon()
 {
-	const FRotator MeshRotation = FRotator(0.0f, GetItemMesh()->GetComponentRotation().Yaw, 0.0f);
-	GetItemMesh()->SetWorldRotation(MeshRotation, false, nullptr, ETeleportType::TeleportPhysics);
+	const FRotator MeshRotation = FRotator(0.0f, WeaponMesh->GetComponentRotation().Yaw, 0.0f);
+	WeaponMesh->SetWorldRotation(MeshRotation, false, nullptr, ETeleportType::TeleportPhysics);
 
-	const FVector MeshForward = GetItemMesh()->GetForwardVector();
-	const FVector MeshRight = GetItemMesh()->GetRightVector();
+	const FVector MeshForward = WeaponMesh->GetForwardVector();
+	const FVector MeshRight = WeaponMesh->GetRightVector();
 
 	// Direction in which we throw the weapon
 	FVector ImpulseDirection = MeshRight.RotateAngleAxis(-20.0f, MeshForward);
@@ -51,7 +110,7 @@ void AWeapon::ThrowWeapon()
 	ImpulseDirection = ImpulseDirection.RotateAngleAxis(RandomRotation, FVector(0.0f, 0.0f, 1.0f));
 	ImpulseDirection *= 2'000.0f;
 
-	GetItemMesh()->AddImpulse(ImpulseDirection);
+	WeaponMesh->AddImpulse(ImpulseDirection);
 
 	bFalling = true;
 	GetWorldTimerManager().SetTimer(ThrowWeaponTimer, this, &AWeapon::StopFalling, ThrowWeaponTime);

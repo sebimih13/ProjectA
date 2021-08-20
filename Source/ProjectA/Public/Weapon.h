@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Item.h"
+#include "Headers/AmmoType.h"
 #include "Weapon.generated.h"
 
 /** Forward Declarations */
@@ -20,13 +21,6 @@ enum class EWeaponType : uint8
 	RocketLauncher		UMETA(DisplayName = "RocketLauncher")
 };
 
-UENUM(BlueprintType)
-enum class EAmmoType : uint8
-{
-	AssaultRifle	UMETA(DisplayName = "AssaultRifle"),
-	Pistol			UMETA(DisplayName = "Pistol")
-};
-
 UCLASS()
 class PROJECTA_API AWeapon : public AItem
 {
@@ -40,26 +34,35 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	virtual void SetItemProperties() override;
+
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+private:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* WeaponMesh;
 
 private:
 	FTimerHandle ThrowWeaponTimer;
 	float ThrowWeaponTime = 0.7f;
 	bool bFalling = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	EWeaponType WeaponType = EWeaponType::AssaultRifle;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	EAmmoType AmmoType = EAmmoType::AssaultRifle;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	int32 Ammo = 0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	int32 AmmoMagazineCapacity = 32;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ammo", meta = (AllowPrivateAccess = "true"))
+	UTexture2D* AmmoIconTexture = nullptr;
 
 	FName ReloadMontageSection = FName("ReloadRifle");
 
@@ -74,10 +77,15 @@ public:
 	void AddAmmo(int32 Amount);
 
 	/** FORCEINLINE Setters / Getters */
+	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; };
+
 	FORCEINLINE EWeaponType GetWeaponType() const { return WeaponType; };
 	FORCEINLINE EAmmoType GetAmmoType() const { return AmmoType; };
 	FORCEINLINE int32 GetAmmo() const { return Ammo; };
 	FORCEINLINE int32 GetAmmoMagazineCapacity() const { return AmmoMagazineCapacity; };
 	FORCEINLINE FName GetReloadMontageSection() const { return ReloadMontageSection; };
+	FORCEINLINE UTexture2D* GetAmmoIconTexture() const { return AmmoIconTexture; };
+
+	FORCEINLINE bool GetClipIsFull() const { return Ammo == AmmoMagazineCapacity; };
 };
 
