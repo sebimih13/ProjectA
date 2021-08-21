@@ -40,6 +40,8 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+	virtual void OnConstruction(const FTransform& Transform) override;
+
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* WeaponMesh;
@@ -66,6 +68,7 @@ private:
 
 	FName ReloadMontageSection = FName("ReloadRifle");
 
+private:
 	void StopFalling();
 
 public:
@@ -75,6 +78,9 @@ public:
 	void DecrementAmmo();
 
 	void AddAmmo(int32 Amount);
+
+	virtual void EnableCustomDepth() override;
+	virtual void DisableCustomDepth() override;
 
 	/** FORCEINLINE Setters / Getters */
 	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; };

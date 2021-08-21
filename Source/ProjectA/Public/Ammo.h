@@ -45,6 +45,9 @@ private:
 	UTexture2D* AmmoIconTexture = nullptr;
 
 public:
+	void EnableCustomDepth() override;
+	void DisableCustomDepth() override;
+
 	/** FORCEINLINE Setters / Getters */
 	FORCEINLINE UStaticMeshComponent* GetAmmoMesh() const { return AmmoMesh; };
 

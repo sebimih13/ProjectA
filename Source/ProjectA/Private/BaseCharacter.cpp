@@ -108,6 +108,7 @@ void ABaseCharacter::BeginPlay()
 	InitializeInterpLocations();
 
 	EquipWeapon(SpawnDefaultWeapon());
+	GetWeapon()->DisableGlowMaterial();
 }
 
 // Called every frame
@@ -455,14 +456,17 @@ void ABaseCharacter::UpdateTraceForItems()
 		{
 			TraceHitItem = Cast<AItem>(ItemHitResult.GetActor());
 
+			// Show Item's Pickup Widget and enable Custom Depth
 			if (TraceHitItem && TraceHitItem->GetPickupWidget())
 			{
 				TraceHitItem->GetPickupWidget()->SetVisibility(true);
+				TraceHitItem->EnableCustomDepth();
 			}
 
 			if (LastTraceHitItem && LastTraceHitItem != TraceHitItem)
 			{
 				LastTraceHitItem->GetPickupWidget()->SetVisibility(false);
+				LastTraceHitItem->DisableCustomDepth();
 			}
 			LastTraceHitItem = TraceHitItem;
 		}
@@ -470,6 +474,7 @@ void ABaseCharacter::UpdateTraceForItems()
 	else if (LastTraceHitItem)
 	{
 		LastTraceHitItem->GetPickupWidget()->SetVisibility(false);
+		LastTraceHitItem->DisableCustomDepth();
 	}
 }
 

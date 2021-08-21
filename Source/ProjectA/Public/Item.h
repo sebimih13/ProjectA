@@ -11,7 +11,10 @@ class UBoxComponent;
 class UWidgetComponent;
 class USphereComponent;
 class USoundCue;
+class UCurveVector;
+class UCurveFloat;
 class ABaseCharacter;
+
 
 UENUM(BlueprintType)
 enum class EItemState : uint8
@@ -47,6 +50,8 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+	virtual void OnConstruction(const FTransform& Transform) override;
+
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item", meta = (AllowPrivateAccess = "true"))
 	UBoxComponent* CollisionBox;
@@ -77,9 +82,20 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
 	UCurveFloat* CurveItemScale = nullptr;
 
+	/** Curve to drive the dynamic material parameters */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	UCurveVector* CurveInterpPulse = nullptr;
+
 	/** Duration of the curve and timer */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
 	float ZCurveTime = 0.7f;
+
+	/** Curve to drive the dynamic material parameters */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	UCurveVector* CurvePulse = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	float PulseCurveTime = 5.0f;
 
 	/** Sound played when Item is picked up */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
@@ -88,6 +104,14 @@ public:
 	/** Sound played when Item is equipped */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
 	USoundCue* EquipSound;
+
+	/** Index for the material we change at runtime */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	int32 MaterialIndex = 0;
+
+	/** Material Instance used with the Dynamic Material Instance */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties")
+	UMaterialInstance* MaterialInstance;
 
 private:
 	/** References */
@@ -104,6 +128,18 @@ private:
 
 	/** Index of the InterpLocations[] this item is interping to */
 	int32 InterpLocationIndex = 0;
+
+	/** Dynamic Instance that can be changed at runtime */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	UMaterialInstanceDynamic* DynamicMaterialInstance;
+
+	bool bCanChangeCustomDepth = true;
+
+	/** Change Dynamic Material Parameters */
+	FTimerHandle PulseTimer;
+	float GlowAmount = 150.0f;
+	float FresnelExponent = 3.0f;
+	float FresnelReflectFraction = 4.0f;
 
 protected:
 	UFUNCTION()
@@ -124,11 +160,27 @@ private:
 	/** Get Interp Location based on the item type */
 	FVector GetInterpLocation();
 
+	/** Sound */
 	void PlayPickupSound();
 	void PlayEquipSound();
+
+	void InitializeCustomDepth();
+
+	/** Pulse System */
+	void ResetPulseTimer();
+	void UpdatePulse();
 		 
 public:
 	void StartItemCurve(ABaseCharacter* BaseCharacter);
+
+	virtual void EnableCustomDepth();
+	virtual void DisableCustomDepth();
+
+	void EnableGlowMaterial();
+	void DisableGlowMaterial();
+
+	/** Start Pulse */
+	void StartPulseTimer();
 
 	/** FORCEINLINE Setters / Getters */
 	FORCEINLINE UBoxComponent* GetCollisionBox() const { return CollisionBox; };
@@ -137,5 +189,9 @@ public:
 
 	FORCEINLINE EItemState GetItemState() const { return ItemState; };
 	void SetItemState(EItemState DesiredState);
+
+	FORCEINLINE UMaterialInstanceDynamic* GetDynamicMaterialInstance() const { return DynamicMaterialInstance; };
+
+	FORCEINLINE bool GetCanChangeCustomDepth() const { return bCanChangeCustomDepth; };
 };
 

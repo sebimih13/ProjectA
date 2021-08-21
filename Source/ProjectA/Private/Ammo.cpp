@@ -27,6 +27,7 @@ void AAmmo::BeginPlay()
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
 
+	// Add Overlap Event for Collision Box
 	GetCollisionBox()->OnComponentBeginOverlap.AddDynamic(this, &AAmmo::CollisionBoxOverlap);
 
 	// Set Pickup Widget Reference to this class
@@ -94,5 +95,19 @@ void AAmmo::SetItemProperties()
 		AmmoMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		break;
 	}	
+}
+
+void AAmmo::EnableCustomDepth()
+{
+	Super::EnableCustomDepth();
+
+	AmmoMesh->SetRenderCustomDepth(true);
+}
+
+void AAmmo::DisableCustomDepth()
+{
+	Super::DisableCustomDepth();
+
+	AmmoMesh->SetRenderCustomDepth(false);
 }
 

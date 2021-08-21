@@ -55,6 +55,13 @@ void AWeapon::Tick(float DeltaTime)
 	}
 }
 
+void AWeapon::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+
+	WeaponMesh->SetMaterial(MaterialIndex, GetDynamicMaterialInstance());
+}
+
 void AWeapon::SetItemProperties()
 {
 	Super::SetItemProperties();
@@ -109,8 +116,9 @@ void AWeapon::ThrowWeapon()
 	const float RandomRotation = 30.0f;	// todo : FMath::FRandRange(10.0f, 30.0f);
 	ImpulseDirection = ImpulseDirection.RotateAngleAxis(RandomRotation, FVector(0.0f, 0.0f, 1.0f));
 	ImpulseDirection *= 2'000.0f;
-
 	WeaponMesh->AddImpulse(ImpulseDirection);
+
+	EnableGlowMaterial();
 
 	bFalling = true;
 	GetWorldTimerManager().SetTimer(ThrowWeaponTimer, this, &AWeapon::StopFalling, ThrowWeaponTime);
@@ -118,9 +126,10 @@ void AWeapon::ThrowWeapon()
 
 void AWeapon::StopFalling()
 {
-	GetWorldTimerManager().ClearTimer(ThrowWeaponTimer);
 	bFalling = false;
+	GetWorldTimerManager().ClearTimer(ThrowWeaponTimer);
 	SetItemState(EItemState::Pickup);
+	StartPulseTimer();
 }
 
 void AWeapon::DecrementAmmo()
@@ -138,5 +147,25 @@ void AWeapon::DecrementAmmo()
 void AWeapon::AddAmmo(int32 Amount)
 {
 	Ammo += Amount;
+}
+
+void AWeapon::EnableCustomDepth()
+{
+	Super::EnableCustomDepth();
+
+	if (GetCanChangeCustomDepth())
+	{
+		WeaponMesh->SetRenderCustomDepth(true);
+	}
+}
+
+void AWeapon::DisableCustomDepth()
+{
+	Super::DisableCustomDepth();
+
+	if (GetCanChangeCustomDepth())
+	{
+		WeaponMesh->SetRenderCustomDepth(false);
+	}
 }
 
