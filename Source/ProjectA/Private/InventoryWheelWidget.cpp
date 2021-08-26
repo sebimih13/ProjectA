@@ -39,7 +39,12 @@ void UInventoryWheelWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	InitializeTMaps();
+	InitializeTMap();
+
+	if (BlendInAnimation)
+	{
+		PlayAnimation(BlendInAnimation, 0.0f, 1, EUMGSequencePlayMode::Forward, 1.0f);
+	}
 
 	BaseCharacter = Cast<ABaseCharacter>(GetOwningPlayerPawn());
 	if (BaseCharacter)
@@ -49,7 +54,7 @@ void UInventoryWheelWidget::NativeConstruct()
 		// Set Index to the selected weapon of the character
 		for (int32 i = 0; i <= 7; i++)
 		{
-			if (BaseCharacter->GetSelectedWeaponType() == GetWeaponTypeOnIndex(i))
+			if (BaseCharacter->GetSelectedWeaponType() == GetWeaponSlotOnIndex(i).WeaponType)
 			{
 				CurrentIndex = i;
 				UpdateDynamicMaterialParameters();
@@ -60,16 +65,16 @@ void UInventoryWheelWidget::NativeConstruct()
 		// Based on Character's Weapon Inventory update the 7 Weapon Slots
 		for (int32 i = 1; i <= 7; i++)
 		{
-			AWeapon* Weapon = Cast<AWeapon>(BaseCharacter->GetWeaponInInventory(GetWeaponTypeOnIndex(i)));
+			AWeapon* Weapon = Cast<AWeapon>(BaseCharacter->GetWeaponInInventory(GetWeaponSlotOnIndex(i).WeaponType));
 			if (Weapon)
 			{
-				GetImageOnIndex(i)->SetBrushFromTexture(Weapon->GetWeaponIconTexture());
-				GetTextOnIndex(i)->SetText(FText::FromString(FString::FromInt(BaseCharacter->GetTotalAmmoAmount(Weapon->GetAmmoType()))));
+				GetWeaponSlotOnIndex(i).WeaponImage->SetBrushFromTexture(Weapon->GetWeaponIconTexture());
+				GetWeaponSlotOnIndex(i).WeaponName->SetText(FText::FromString(FString::FromInt(BaseCharacter->GetTotalAmmoAmount(Weapon->GetAmmoType()))));
 			}
 			else
 			{
-				GetImageOnIndex(i)->SetOpacity(0.0f);
-				GetTextOnIndex(i)->SetOpacity(0.0f);
+				GetWeaponSlotOnIndex(i).WeaponImage->SetOpacity(0.0f);
+				GetWeaponSlotOnIndex(i).WeaponName->SetOpacity(0.0f);
 			}
 		}
 	}
@@ -86,13 +91,13 @@ void UInventoryWheelWidget::NativeTick(const FGeometry& MyGeometry, float InDelt
 	UpdateIndex();
 
 	// Update selected weapon type
-	BaseCharacter->SetSelectedWeaponType(GetWeaponTypeOnIndex(CurrentIndex));
+	BaseCharacter->SetSelectedWeaponType(GetWeaponSlotOnIndex(CurrentIndex).WeaponType);
 
 	// Update Weapon Name
 	WeaponNameText->SetOpacity(0.0f);
 	if (CurrentIndex != 0)
 	{
-		AWeapon* Weapon = Cast<AWeapon>(BaseCharacter->GetWeaponInInventory(GetWeaponTypeOnIndex(CurrentIndex)));
+		AWeapon* Weapon = Cast<AWeapon>(BaseCharacter->GetWeaponInInventory(GetWeaponSlotOnIndex(CurrentIndex).WeaponType));
 		if (Weapon)
 		{
 			WeaponNameText->SetOpacity(1.0f);
@@ -106,7 +111,7 @@ void UInventoryWheelWidget::NativeTick(const FGeometry& MyGeometry, float InDelt
 	}
 }
 
-void UInventoryWheelWidget::InitializeTMaps()
+void UInventoryWheelWidget::InitializeTMap()
 {
 	/** Weapon Inventory
 		0 : Unarmed
@@ -119,32 +124,14 @@ void UInventoryWheelWidget::InitializeTMaps()
 		7 : SMG
 	*/
 
-	// TODO : MAKE A STRUCT
-
-	IndexToWeaponType.Add(0, EWeaponType::Unarmed);
-	IndexToWeaponType.Add(1, EWeaponType::Shotgun);
-	IndexToWeaponType.Add(2, EWeaponType::Pistol);
-	IndexToWeaponType.Add(3, EWeaponType::RocketLauncher);
-	IndexToWeaponType.Add(4, EWeaponType::Sniper);
-	IndexToWeaponType.Add(5, EWeaponType::GrenadeLauncher);
-	IndexToWeaponType.Add(6, EWeaponType::AssaultRifle);
-	IndexToWeaponType.Add(7, EWeaponType::SMG);
-
-	IndexToIndexImage.Add(1, Index1Image);
-	IndexToIndexImage.Add(2, Index2Image);
-	IndexToIndexImage.Add(3, Index3Image);
-	IndexToIndexImage.Add(4, Index4Image);
-	IndexToIndexImage.Add(5, Index5Image);
-	IndexToIndexImage.Add(6, Index6Image);
-	IndexToIndexImage.Add(7, Index7Image);
-
-	IndexToIndexText.Add(1, Index1Text);
-	IndexToIndexText.Add(2, Index2Text);
-	IndexToIndexText.Add(3, Index3Text);
-	IndexToIndexText.Add(4, Index4Text);
-	IndexToIndexText.Add(5, Index5Text);
-	IndexToIndexText.Add(6, Index6Text);
-	IndexToIndexText.Add(7, Index7Text);
+	IndexToWeaponSlot.Add(0, FWeaponSlot(EWeaponType::Unarmed,			nullptr, nullptr));
+	IndexToWeaponSlot.Add(1, FWeaponSlot(EWeaponType::Shotgun,			Index1Image, Index1Text));
+	IndexToWeaponSlot.Add(2, FWeaponSlot(EWeaponType::Pistol,			Index2Image, Index2Text));
+	IndexToWeaponSlot.Add(3, FWeaponSlot(EWeaponType::RocketLauncher,	Index3Image, Index3Text));
+	IndexToWeaponSlot.Add(4, FWeaponSlot(EWeaponType::Sniper,			Index4Image, Index4Text));
+	IndexToWeaponSlot.Add(5, FWeaponSlot(EWeaponType::GrenadeLauncher,	Index5Image, Index5Text));
+	IndexToWeaponSlot.Add(6, FWeaponSlot(EWeaponType::AssaultRifle,		Index6Image, Index6Text));
+	IndexToWeaponSlot.Add(7, FWeaponSlot(EWeaponType::SMG,				Index7Image, Index7Text));
 }
 
 float UInventoryWheelWidget::CalculateSegmentDegreeSize() const

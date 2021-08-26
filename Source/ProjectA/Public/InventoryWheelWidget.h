@@ -14,6 +14,27 @@ class UTextBlock;
 class ABaseCharacterPlayerController;
 class ABaseCharacter;
 
+USTRUCT()
+struct FWeaponSlot
+{
+	GENERATED_BODY()
+
+public:
+	/** Constructors */
+	FWeaponSlot() {}
+
+	FWeaponSlot(EWeaponType Type, UImage* Image, UTextBlock* TextBlock)
+	{
+		WeaponType = Type;
+		WeaponImage = Image;
+		WeaponName = TextBlock;
+	}
+
+	EWeaponType WeaponType;
+	UImage* WeaponImage;
+	UTextBlock* WeaponName;
+};
+
 UCLASS()
 class PROJECTA_API UInventoryWheelWidget : public UUserWidget
 {
@@ -58,21 +79,11 @@ private:
 	FVector2D CurrentInput = FVector2D::ZeroVector;
 	int32 CurrentIndex = 0;
 
-	/** Weapon Inventory
-		0 : Unarmed
-		1 : Shotgun
-		2 : Pistol
-		3 : Rocket Launcher
-		4 : Sniper Rifle
-		5 : Grenade Launcher
-		6 : Assault Rifle
-		7 : SMG
-	*/
-	TMap<int32, EWeaponType> IndexToWeaponType;
-	TMap<int32, UImage*> IndexToIndexImage;
-	TMap<int32, UTextBlock*> IndexToIndexText;
+	/** Weapon Inventory based on a Index */
+	TMap<int32, FWeaponSlot> IndexToWeaponSlot;
 
 public:
+	/** Widget Elements */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
 	UImage* WheelImage;
 
@@ -121,10 +132,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
 	UTextBlock* Index7Text;
 
+	/** Widget Animations */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Transient, meta = (BindWidgetAnim))
+	UWidgetAnimation* BlendInAnimation;
+
 private:
 	float CalculateSegmentDegreeSize() const;
 
-	void InitializeTMaps();
+	void InitializeTMap();
 
 	void UpdateCurrentInput();
 	void UpdateDirectionWithJoystick();
@@ -134,8 +149,6 @@ private:
 	void UpdateDynamicMaterialParameters();
 	
 	/** FORCEINLINE Setters / Getters */
-	FORCEINLINE EWeaponType GetWeaponTypeOnIndex(int32 Index) const { return IndexToWeaponType[Index]; };
-	FORCEINLINE UImage* GetImageOnIndex(int32 Index) const { return IndexToIndexImage[Index]; };
-	FORCEINLINE UTextBlock* GetTextOnIndex(int32 Index) const { return IndexToIndexText[Index]; };
+	FORCEINLINE FWeaponSlot GetWeaponSlotOnIndex(int Index) const { return IndexToWeaponSlot[Index]; };
 };
 
