@@ -41,6 +41,7 @@ void AWeapon::BeginPlay()
 	case EWeaponType::Sniper:			ReloadMontageSection = FName("ReloadSniper");			break;
 	case EWeaponType::GrenadeLauncher:	ReloadMontageSection = FName("ReloadGrenadeLauncher");	break;
 	case EWeaponType::RocketLauncher:	ReloadMontageSection = FName("ReloadRocketLauncher");	break;
+	case EWeaponType::SMG:				ReloadMontageSection = FName("ReloadSMG");				break;
 	}
 }
 
@@ -59,7 +60,7 @@ void AWeapon::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 
-	WeaponMesh->SetMaterial(MaterialIndex, GetDynamicMaterialInstance());
+	WeaponMesh->SetMaterial(GetMaterialIndex(), GetDynamicMaterialInstance());
 }
 
 void AWeapon::SetItemProperties()
@@ -69,22 +70,25 @@ void AWeapon::SetItemProperties()
 	switch (GetItemState())
 	{
 	case EItemState::Pickup:
+		WeaponMesh->SetVisibility(true);
 		WeaponMesh->SetSimulatePhysics(false);
 		WeaponMesh->SetEnableGravity(false);
-		WeaponMesh->SetVisibility(true);
 		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		break;
 
 	case EItemState::Equipped:
+		WeaponMesh->SetVisibility(true);
+		UE_LOG(LogTemp, Warning, TEXT("SET VISIBILITY TRUE"));
+
 		WeaponMesh->SetSimulatePhysics(false);
 		WeaponMesh->SetEnableGravity(false);
-		WeaponMesh->SetVisibility(true);
 		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		break;
 
 	case EItemState::Falling:
+		WeaponMesh->SetVisibility(true);
 		WeaponMesh->SetSimulatePhysics(true);
 		WeaponMesh->SetEnableGravity(true);
 		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
@@ -93,9 +97,19 @@ void AWeapon::SetItemProperties()
 		break;
 
 	case EItemState::EquipInterping:
+		WeaponMesh->SetVisibility(true);
 		WeaponMesh->SetSimulatePhysics(false);
 		WeaponMesh->SetEnableGravity(false);
-		WeaponMesh->SetVisibility(true);
+		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		break;
+
+	case EItemState::PickedUp:
+		WeaponMesh->SetVisibility(false);
+		UE_LOG(LogTemp, Warning, TEXT("SET VISIBILITY FALSE"));
+
+		WeaponMesh->SetSimulatePhysics(false);
+		WeaponMesh->SetEnableGravity(false);
 		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		break;

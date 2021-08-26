@@ -15,6 +15,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
 
+#include "BaseCharacterPlayerController.h"
 #include "BaseCharacterAnimInstance.h"
 #include "Item.h"
 #include "Weapon.h"
@@ -99,6 +100,7 @@ void ABaseCharacter::BeginPlay()
 	
 	// Set Anim Instance Reference
 	MainAnimInstance = Cast<UBaseCharacterAnimInstance>(GetMesh()->GetAnimInstance());
+	MainPlayerController = Cast<ABaseCharacterPlayerController>(GetController());
 
 	// Configure Left Hand Scene Component
 	FAttachmentTransformRules AttachmentRules(EAttachmentRule::KeepRelative, true);
@@ -106,9 +108,7 @@ void ABaseCharacter::BeginPlay()
 
 	InitializeAmmoMap();
 	InitializeInterpLocations();
-
-	EquipWeapon(SpawnDefaultWeapon());
-	GetWeapon()->DisableGlowMaterial();
+	InitializeWeaponWheel();
 }
 
 // Called every frame
@@ -138,6 +138,15 @@ void ABaseCharacter::Tick(float DeltaTime)
 	// Cached values
 	PreviousVelocity = GetVelocity();
 	PreviousAimYawRate = GetControlRotation().Yaw;
+
+	// TODO DEBUG
+	if (GetWeapon())
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(10, 0, FColor::Black, GetWeapon()->GetItemName(), false);
+		}
+	}
 }
 
 // Called to bind functionality to input
@@ -170,6 +179,10 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
 	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &ABaseCharacter::ReloadButtonPressed);
 
+	PlayerInputComponent->BindAction("InventoryWheel", IE_Pressed, this, &ABaseCharacter::InventoryWheelButtonPressed);
+	PlayerInputComponent->BindAction("InventoryWheel", IE_Released, this, &ABaseCharacter::InventoryWheelButtonReleased);
+
+	// TODO : move to player controller
 	PlayerInputComponent->BindAction("SwitchInput", IE_Pressed, this, &ABaseCharacter::SwitchInput);
 
 	// TODO: Overlay
@@ -204,7 +217,7 @@ void ABaseCharacter::LookUpAtRate(float Rate)
 
 void ABaseCharacter::StartSprint()
 {
-	if (InputType == EInputType::Controller)
+	if (MainPlayerController->GetInputType() == EInputType::Controller)
 	{
 		if (MainAnimInstance->GetShouldSprint())
 		{
@@ -223,7 +236,7 @@ void ABaseCharacter::StartSprint()
 
 void ABaseCharacter::StopSprint()
 {
-	if (InputType == EInputType::KeyboardMouse)
+	if (MainPlayerController->GetInputType() == EInputType::KeyboardMouse)
 	{
 		MainAnimInstance->SetShouldSprint(false);
 	}
@@ -300,6 +313,28 @@ void ABaseCharacter::ReloadButtonPressed()
 	ReloadWeapon();
 }
 
+void ABaseCharacter::InventoryWheelButtonPressed()
+{
+	MainPlayerController->DisplayInventoryWheel();
+	bIsInventoryWheelOpen = true;
+
+	/*  TODO: add time dilation
+		dont't register player input : use bIsInventoryWheelOpen
+		add post process
+	*/
+}
+
+void ABaseCharacter::InventoryWheelButtonReleased()
+{
+	MainPlayerController->RemoveInventoryWheel();
+	bIsInventoryWheelOpen = false;
+
+	// Get selected Weapon from Wheel Inventory
+	EquipWeapon(GetWeaponInInventory(GetSelectedWeaponType()));
+
+	// TODO : reverse from button pressed
+}
+
 void ABaseCharacter::SetDefaultOverlay()
 {
 	MainAnimInstance->SetOverlayState(EOverlayState::Default);
@@ -326,21 +361,24 @@ void ABaseCharacter::SetPistol2HOverlay()
 
 void ABaseCharacter::SwitchInput(FKey Key)
 {
+	// TODO : move to player controller
+	// check if the input have changed in other function
+
 	if (Key.IsGamepadKey())
 	{
-		if (InputType == EInputType::KeyboardMouse)
+		if (MainPlayerController->GetInputType() == EInputType::KeyboardMouse)
 		{
 			MainAnimInstance->SetShouldSprint(false);
 		}
-		SetInputType(EInputType::Controller);
+		MainPlayerController->SetInputType(EInputType::Controller);
 	}
 	else
 	{
-		if (InputType == EInputType::Controller)
+		if (MainPlayerController->GetInputType() == EInputType::Controller)
 		{
 			MainAnimInstance->SetShouldSprint(false);
 		}
-		SetInputType(EInputType::KeyboardMouse);
+		MainPlayerController->SetInputType(EInputType::KeyboardMouse);
 	}
 }
 
@@ -672,33 +710,30 @@ AWeapon* ABaseCharacter::SpawnDefaultWeapon()
 
 void ABaseCharacter::EquipWeapon(AWeapon* WeaponToEquip)
 {
+	// Put the current Equipped Weapon back in the Inventory
+	if (GetWeapon())
+	{
+		GetWeapon()->SetItemState(EItemState::PickedUp);
+	}
+
+	// Equip the new Weapon
 	if (WeaponToEquip)
 	{
-		FAttachmentTransformRules AttachmentRules(EAttachmentRule::SnapToTarget, false);
-		WeaponToEquip->AttachToComponent(GetMesh(), AttachmentRules, FName("weapon_slot_r"));
-
 		EquippedWeapon = WeaponToEquip;
 		GetWeapon()->SetItemState(EItemState::Equipped);
 	}
-}
-
-void ABaseCharacter::DropWeapon()
-{
-	if (GetWeapon())
+	else
 	{
-		FDetachmentTransformRules DetachmentRules(EDetachmentRule::KeepWorld, true);
-		GetWeapon()->GetWeaponMesh()->DetachFromComponent(DetachmentRules);
-		GetWeapon()->SetItemState(EItemState::Falling);
-		GetWeapon()->ThrowWeapon();
+		EquippedWeapon = nullptr;
 	}
 }
 
-void ABaseCharacter::SwapWeapon(AWeapon* WeaponToSwap)
+void ABaseCharacter::DropWeapon(AWeapon* WeaponToDrop)
 {
-	DropWeapon();
-	EquipWeapon(WeaponToSwap);
-	TraceHitItem = nullptr;
-	LastTraceHitItem = nullptr;
+	FDetachmentTransformRules DetachmentRules(EDetachmentRule::KeepWorld, true);
+	WeaponToDrop->GetWeaponMesh()->DetachFromComponent(DetachmentRules);
+	WeaponToDrop->SetItemState(EItemState::Falling);
+	WeaponToDrop->ThrowWeapon();
 }
 
 void ABaseCharacter::ReloadWeapon()
@@ -766,10 +801,10 @@ bool ABaseCharacter::WeaponHasAmmo()
 
 void ABaseCharacter::PickupAmmo(AAmmo* Ammo)
 {
-	AmmoMap[Ammo->GetAmmoType()] += Ammo->ItemsCount;
+	AmmoMap[Ammo->GetAmmoType()] += Ammo->GetItemsCount();
 
 	// If we don't have ammo in the weapon, try reloading
-	if (GetWeapon()->GetAmmoType() == Ammo->GetAmmoType() && GetWeapon()->GetAmmo() == 0)
+	if (GetWeapon() && GetWeapon()->GetAmmoType() == Ammo->GetAmmoType() && GetWeapon()->GetAmmo() == 0)
 	{
 		ReloadWeapon();
 	}
@@ -794,7 +829,7 @@ void ABaseCharacter::GetPickupItem(AItem* Item)
 	AWeapon* Weapon = Cast<AWeapon>(Item);
 	if (Weapon)
 	{
-		SwapWeapon(Weapon);
+		AddWeaponInInventory(Weapon);
 	}
 
 	AAmmo* Ammo = Cast<AAmmo>(Item);
@@ -897,5 +932,52 @@ void ABaseCharacter::ResetEquipSoundTimer()
 {
 	bShouldPlayEquipSound = true;
 	GetWorldTimerManager().ClearTimer(EquipSoundTimer);
+}
+
+void ABaseCharacter::InitializeWeaponWheel()
+{
+	// Add 8 slots
+	WeaponInventory.Add(EWeaponType::Unarmed, nullptr);
+	WeaponInventory.Add(EWeaponType::AssaultRifle, nullptr);
+	WeaponInventory.Add(EWeaponType::Pistol, nullptr);
+	WeaponInventory.Add(EWeaponType::Shotgun, nullptr);
+	WeaponInventory.Add(EWeaponType::Sniper, nullptr);
+	WeaponInventory.Add(EWeaponType::GrenadeLauncher, nullptr);
+	WeaponInventory.Add(EWeaponType::RocketLauncher, nullptr);
+	WeaponInventory.Add(EWeaponType::SMG, nullptr);
+}
+
+void ABaseCharacter::AddWeaponInInventory(AWeapon* WeaponToAdd)
+{
+	// Attach it to Character
+	FAttachmentTransformRules AttachmentRules(EAttachmentRule::SnapToTarget, false);
+	WeaponToAdd->AttachToComponent(GetMesh(), AttachmentRules, FName("weapon_slot_r"));
+
+	TraceHitItem = nullptr;
+	LastTraceHitItem = nullptr;
+
+	WeaponToAdd->SetItemState(EItemState::PickedUp);
+
+	if (!GetWeaponInInventory(WeaponToAdd->GetWeaponType()))	// We don't have this type of weapon in Inventory
+	{
+		WeaponInventory[WeaponToAdd->GetWeaponType()] = WeaponToAdd;
+
+		// If we want this type of weapon => equip it
+		if (GetSelectedWeaponType() == WeaponToAdd->GetWeaponType())
+		{
+			EquipWeapon(WeaponToAdd);
+		}
+	}
+	else	// We already have this type of weapon in the Inventory => Swap it
+	{
+		// If we have equipped a weapon with the same EWeaponType with the new weapon => Equip the new Weapon
+		if (GetWeapon() && GetWeapon()->GetWeaponType() == WeaponToAdd->GetWeaponType())
+		{
+			EquipWeapon(WeaponToAdd);
+		}
+
+		DropWeapon(GetWeaponInInventory(WeaponToAdd->GetWeaponType()));
+		WeaponInventory[WeaponToAdd->GetWeaponType()] = WeaponToAdd;
+	}
 }
 

@@ -63,54 +63,54 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item", meta = (AllowPrivateAccess = "true"))
 	UWidgetComponent* PickupWidgetComponent;
 
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties")
+private:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	EItemType ItemType = EItemType::Ammo;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	FString ItemName = FString("Default");
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	int32 ItemsCount = 0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	int32 DollarsCount = 1;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	UCurveFloat* CurveItemZ = nullptr;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	UCurveFloat* CurveItemScale = nullptr;
 
 	/** Curve to drive the dynamic material parameters */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	UCurveVector* CurveInterpPulse = nullptr;
 
 	/** Duration of the curve and timer */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	float ZCurveTime = 0.7f;
 
 	/** Curve to drive the dynamic material parameters */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	UCurveVector* CurvePulse = nullptr;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	float PulseCurveTime = 5.0f;
 
 	/** Sound played when Item is picked up */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	USoundCue* PickupSound;
 
 	/** Sound played when Item is equipped */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	USoundCue* EquipSound;
 
 	/** Index for the material we change at runtime */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	int32 MaterialIndex = 0;
 
 	/** Material Instance used with the Dynamic Material Instance */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	UMaterialInstance* MaterialInstance;
 
 private:
@@ -187,6 +187,11 @@ public:
 	FORCEINLINE USphereComponent* GetAreaSphere() const { return AreaSphere; };
 	FORCEINLINE UWidgetComponent* GetPickupWidget() const { return PickupWidgetComponent; };
 
+	FORCEINLINE FString GetItemName() const { return ItemName; };
+	FORCEINLINE int32 GetItemsCount() const { return ItemsCount; };
+	FORCEINLINE int32 GetDollarsCount() const { return DollarsCount; };
+	FORCEINLINE int32 GetMaterialIndex() const { return MaterialIndex; };
+	
 	FORCEINLINE EItemState GetItemState() const { return ItemState; };
 	void SetItemState(EItemState DesiredState);
 

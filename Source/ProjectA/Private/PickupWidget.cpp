@@ -16,27 +16,27 @@ void UPickupWidget::NativeConstruct()
 
 	if (Weapon)
 	{
-		ItemNameText->SetText(FText::FromString(Weapon->ItemName));
-		AmountText->SetText(FText::FromString(FString::FromInt(Weapon->ItemsCount)));
+		ItemNameText->SetText(FText::FromString(Weapon->GetItemName()));
+		AmountText->SetText(FText::FromString(FString::FromInt(Weapon->GetItemsCount())));
 		AmmoImage->SetBrushFromTexture(Weapon->GetAmmoIconTexture());
 
-		if (Weapon->DollarsCount >= 1)
+		if (Weapon->GetDollarsCount() >= 1)
 		{
 			DollarIcon1->SetOpacity(1.0f);
 		}
-		if (Weapon->DollarsCount >= 2)
+		if (Weapon->GetDollarsCount() >= 2)
 		{
 			DollarIcon2->SetOpacity(1.0f);
 		}
-		if (Weapon->DollarsCount >= 3)
+		if (Weapon->GetDollarsCount() >= 3)
 		{
 			DollarIcon3->SetOpacity(1.0f);
 		}
-		if (Weapon->DollarsCount >= 4)
+		if (Weapon->GetDollarsCount() >= 4)
 		{
 			DollarIcon4->SetOpacity(1.0f);
 		}
-		if (Weapon->DollarsCount >= 5)
+		if (Weapon->GetDollarsCount() >= 5)
 		{
 			DollarIcon5->SetOpacity(1.0f);
 		}

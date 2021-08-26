@@ -25,8 +25,8 @@ void UAmmoWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	if (Character && Character->GetWeapon())
 	{
 		CurrentAmmoText->SetText(FText::FromString(FString::FromInt(Character->GetWeapon()->GetAmmo())));
-		TotalAmmoText->SetText(FText::FromString(FString::FromInt(Character->AmmoMap[Character->GetWeapon()->GetAmmoType()])));
-		WeaponNameText->SetText(FText::FromString(Character->GetWeapon()->ItemName));
+		TotalAmmoText->SetText(FText::FromString(FString::FromInt(Character->GetTotalAmmoAmount(Character->GetWeapon()->GetAmmoType()))));
+		WeaponNameText->SetText(FText::FromString(Character->GetWeapon()->GetItemName()));
 	}
 	else
 	{

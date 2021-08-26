@@ -5,24 +5,19 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Headers/AmmoType.h"
+#include "Headers/WeaponType.h"
 #include "BaseCharacter.generated.h"
 
 /** Forward Declarations */
 class USpringArmComponent;
 class UCameraComponent;
 class UCurveFloat;
+
 class UBaseCharacterAnimInstance;
+class ABaseCharacterPlayerController;
 class AItem;
 class AWeapon;
 class AAmmo;
-
-/** TODO : Put this in character controller */
-UENUM(BlueprintType)
-enum class EInputType : uint8
-{
-	Controller		UMETA(DisplayName = "Controller"),
-	KeyboardMouse	UMETA(DisplayName = "KeyboardMouse")
-};
 
 UENUM(BlueprintType)
 enum class ECombatState : uint8
@@ -113,6 +108,10 @@ protected:
 	/** Called for reloading the weapon */
 	void ReloadButtonPressed();
 
+	/** Called for displaying/removing the Inventory Wheel */
+	void InventoryWheelButtonPressed();
+	void InventoryWheelButtonReleased();
+
 	/** Switch Weapons */
 	void SetDefaultOverlay();
 	void SetRifleOverlay();
@@ -159,9 +158,7 @@ private:
 private:
 	/** References */
 	UBaseCharacterAnimInstance* MainAnimInstance;
-
-	/** Input Type */
-	EInputType InputType = EInputType::KeyboardMouse;
+	ABaseCharacterPlayerController* MainPlayerController;
 
 	/** Character Informations */
 	FVector Acceleration = FVector::ZeroVector;
@@ -211,8 +208,8 @@ private:
 	AItem* LastTraceHitItem = nullptr;
 
 	/** Weapon System */
-	AWeapon* EquippedWeapon;
-	AItem* TraceHitItem;
+	AWeapon* EquippedWeapon = nullptr;
+	AItem* TraceHitItem = nullptr;
 
 	/** Combat State of the Character */
 	ECombatState CombatState = ECombatState::Normal;
@@ -225,6 +222,12 @@ private:
 
 	FTimerHandle EquipSoundTimer;
 	bool bShouldPlayEquipSound = true;
+
+	/** Inventory Wheel System */
+	bool bIsInventoryWheelOpen = false;
+
+	/** Weapon Inventory */
+	TMap<EWeaponType, AWeapon*> WeaponInventory;
 
 public:
 	/** Base turn rate, in deg/sec */
@@ -344,10 +347,9 @@ private:
 	bool TraceUnderCrosshairs(FHitResult& HitResult);
 
 	/** Weapon System */
-	AWeapon* SpawnDefaultWeapon();
+	AWeapon* SpawnDefaultWeapon();					// TODO : do we need this?
 	void EquipWeapon(AWeapon* WeaponToEquip);
-	void DropWeapon();
-	void SwapWeapon(AWeapon* WeaponToSwap);
+	void DropWeapon(AWeapon* WeaponToDrop);
 	void ReloadWeapon();
 
 	/** Ammo System */
@@ -366,6 +368,11 @@ private:
 	/** Limit Sounds */
 	void ResetPickupSoundTimer();
 	void ResetEquipSoundTimer();
+
+	/** Inventory Wheel System */
+	void InitializeWeaponWheel();
+	void AddWeaponInInventory(AWeapon* WeaponToAdd);
+	EWeaponType SelectedWeaponType = EWeaponType::Unarmed;
 
 public:
 	/** Adds / Substracts to/from OverlappedItemsCount and updates bShouldTraceForItems */
@@ -389,9 +396,6 @@ public:
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; };
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; };
 	FORCEINLINE USceneComponent* GetLeftHandSceneComponent() const { return LeftHandSceneComponent; };
-
-	FORCEINLINE EInputType GetInputType() const { return InputType; };
-	FORCEINLINE void SetInputType(EInputType Type) { InputType = Type; };
 
 	FORCEINLINE bool GetIsMoving() const { return bIsMoving; };
 	FORCEINLINE void SetIsMoving(bool State) { bIsMoving = State; };
@@ -417,5 +421,12 @@ public:
 
 	FORCEINLINE bool GetShouldPlayPickupSound() const { return bShouldPlayPickupSound; };
 	FORCEINLINE bool GetShouldPlayEquipSound() const { return bShouldPlayEquipSound; };
+
+	FORCEINLINE AWeapon* GetWeaponInInventory(EWeaponType Type) const { return WeaponInventory[Type]; };
+
+	FORCEINLINE int32 GetTotalAmmoAmount(EAmmoType Type) const { return AmmoMap[Type]; };
+
+	FORCEINLINE EWeaponType GetSelectedWeaponType() const { return SelectedWeaponType; };
+	FORCEINLINE void SetSelectedWeaponType(EWeaponType Type) { SelectedWeaponType = Type; };
 };
 

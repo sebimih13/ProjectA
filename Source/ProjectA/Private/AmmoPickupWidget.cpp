@@ -16,7 +16,7 @@ void UAmmoPickupWidget::NativeConstruct()
 
 	if (Ammo)
 	{
-		AmmoCountText->SetText(FText::FromString(FString::FromInt(Ammo->ItemsCount)));
+		AmmoCountText->SetText(FText::FromString(FString::FromInt(Ammo->GetItemsCount())));
 		AmmoImage->SetBrushFromTexture(Ammo->GetAmmoIconTexture());
 	}
 }

@@ -27,6 +27,17 @@ AItem::AItem()
 	PickupWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("PickupWidget"));
 }
 
+void AItem::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+
+	if (MaterialInstance)
+	{
+		DynamicMaterialInstance = UMaterialInstanceDynamic::Create(MaterialInstance, this);
+	}	
+	EnableGlowMaterial();
+}
+
 // Called when the game starts or when spawned
 void AItem::BeginPlay()
 {
@@ -58,17 +69,6 @@ void AItem::Tick(float DeltaTime)
 
 	ItemInterping(DeltaTime);
 	UpdatePulse();
-}
-
-void AItem::OnConstruction(const FTransform& Transform)
-{
-	Super::OnConstruction(Transform);
-
-	if (MaterialInstance)
-	{
-		DynamicMaterialInstance = UMaterialInstanceDynamic::Create(MaterialInstance, this);
-	}	
-	EnableGlowMaterial();
 }
 
 void AItem::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -144,6 +144,16 @@ void AItem::SetItemProperties()
 
 		PickupWidgetComponent->SetVisibility(false);
 		break;
+
+	case EItemState::PickedUp:
+		AreaSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		CollisionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		PickupWidgetComponent->SetVisibility(false);
+		break;
 	}
 }
 
@@ -159,14 +169,14 @@ void AItem::StartItemCurve(ABaseCharacter* BaseCharacter)
 	InterpLocationIndex = Character->GetInterpLocationIndex();
 	Character->IncrementInterpLocationItemCount(InterpLocationIndex, 1);
 
-	bInterping = true;
-	GetWorldTimerManager().SetTimer(ItemInterpTimer, this, &AItem::FinishInterping, ZCurveTime);
-
 	const float CameraRotationYaw = Character->GetFollowCamera()->GetComponentRotation().Yaw;
 	const float ItemRotatationYaw = GetActorRotation().Yaw;
 	InterpInitialYawOffset = ItemRotatationYaw - CameraRotationYaw;
 
 	bCanChangeCustomDepth = false;
+
+	bInterping = true;
+	GetWorldTimerManager().SetTimer(ItemInterpTimer, this, &AItem::FinishInterping, ZCurveTime);
 }
 
 void AItem::FinishInterping()
@@ -176,7 +186,6 @@ void AItem::FinishInterping()
 		PlayEquipSound();
 		Character->GetPickupItem(this);
 		Character->IncrementInterpLocationItemCount(InterpLocationIndex, -1);
-		SetItemState(EItemState::PickedUp);
 	}
 
 	// Set scale back to normal

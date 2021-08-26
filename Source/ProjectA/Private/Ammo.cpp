@@ -82,6 +82,7 @@ void AAmmo::SetItemProperties()
 	case EItemState::Falling:
 		AmmoMesh->SetSimulatePhysics(true);
 		AmmoMesh->SetEnableGravity(true);
+		AmmoMesh->SetVisibility(true);
 		AmmoMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		AmmoMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
 		AmmoMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
