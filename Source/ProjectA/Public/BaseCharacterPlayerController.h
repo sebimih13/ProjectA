@@ -62,6 +62,9 @@ private:
 	UInventoryWheelWidget* InventoryWheelWidget;
 
 public:
+	void DisplayHUDOverlay();
+	void HideHUDOverlay();
+
 	void DisplayInventoryWheel();
 	void RemoveInventoryWheel();
 

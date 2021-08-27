@@ -24,7 +24,7 @@ void ABaseCharacterPlayerController::BeginPlay()
 	if (HUDOverlay)
 	{
 		HUDOverlay->AddToViewport();
-		HUDOverlay->SetVisibility(ESlateVisibility::Visible);
+		HUDOverlay->SetVisibility(ESlateVisibility::Hidden);
 	}
 }
 
@@ -53,6 +53,16 @@ void ABaseCharacterPlayerController::UpdateGamepadRightThumbstickY(float Value)
 	GamepadInput.Y = Value;
 }
 
+void ABaseCharacterPlayerController::DisplayHUDOverlay()
+{
+	HUDOverlay->SetVisibility(ESlateVisibility::Visible);
+}
+
+void ABaseCharacterPlayerController::HideHUDOverlay()
+{
+	HUDOverlay->SetVisibility(ESlateVisibility::Hidden);
+}
+
 void ABaseCharacterPlayerController::DisplayInventoryWheel()
 {
 	if (InventoryWheelClass)
@@ -62,6 +72,7 @@ void ABaseCharacterPlayerController::DisplayInventoryWheel()
 
 	if (!InventoryWheelWidget) return;
 
+	HideHUDOverlay();
 	InventoryWheelWidget->AddToViewport();
 
 	FInputModeGameAndUI InputModeGameAndUI;
@@ -84,6 +95,7 @@ void ABaseCharacterPlayerController::RemoveInventoryWheel()
 {
 	if (!InventoryWheelWidget) return;
 
+	DisplayHUDOverlay();
 	InventoryWheelWidget->RemoveFromViewport();
 
 	FInputModeGameOnly InputModeGameOnly;

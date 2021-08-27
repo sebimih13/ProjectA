@@ -106,6 +106,9 @@ void ABaseCharacter::BeginPlay()
 	FAttachmentTransformRules AttachmentRules(EAttachmentRule::KeepRelative, true);
 	LeftHandSceneComponent->AttachToComponent(GetMesh(), AttachmentRules, FName("hand_l"));
 
+	// Setup Camera Saturation
+	FollowCamera->PostProcessSettings.bOverride_ColorSaturation = true;
+
 	InitializeAmmoMap();
 	InitializeInterpLocations();
 	InitializeWeaponWheel();
@@ -147,6 +150,7 @@ void ABaseCharacter::Tick(float DeltaTime)
 			GEngine->AddOnScreenDebugMessage(10, 0, FColor::Black, GetWeapon()->GetItemName(), false);
 		}
 	}
+	GEngine->AddOnScreenDebugMessage(30, 0, FColor::Black, CombatState == ECombatState::InInventory ? TEXT("In Inventory") : TEXT("Not in Inventory"), false);
 }
 
 // Called to bind functionality to input
@@ -207,11 +211,15 @@ void ABaseCharacter::MoveRight(float Value)
 
 void ABaseCharacter::TurnAtRate(float Rate)
 {
+	if (CombatState == ECombatState::InInventory) return;
+
 	AddControllerYawInput(LookRightLeftRate * Rate);
 }
 
 void ABaseCharacter::LookUpAtRate(float Rate)
 {
+	if (CombatState == ECombatState::InInventory) return;
+
 	AddControllerPitchInput(LookUpDownRate * Rate);
 }
 
@@ -244,6 +252,8 @@ void ABaseCharacter::StopSprint()
 
 void ABaseCharacter::StartJump()
 {
+	if (CombatState == ECombatState::InInventory) return;
+
 	MainAnimInstance->SetJumped(true);
 	GetWorldTimerManager().SetTimer(JumpingTimer, this, &ABaseCharacter::ResetJump, 0.1f);
 	ACharacter::Jump();
@@ -271,6 +281,8 @@ void ABaseCharacter::StartCrouch()
 
 void ABaseCharacter::AimingButtonPressed()
 {
+	if (CombatState == ECombatState::InInventory) return;
+
 	bAimingButtonPressed = true;
 	if (CombatState != ECombatState::Reloading)
 	{
@@ -286,6 +298,8 @@ void ABaseCharacter::AimingButtonReleased()
 
 void ABaseCharacter::FireButtonPressed()
 {
+	if (CombatState == ECombatState::InInventory) return;
+
 	bFireButtonPressed = true;
 	FireWeapon();
 }
@@ -297,15 +311,18 @@ void ABaseCharacter::FireButtonReleased()
 
 void ABaseCharacter::InteractButtonPressed()
 {
+	if (CombatState == ECombatState::InInventory) return;
+
 	if (TraceHitItem)
 	{
 		TraceHitItem->StartItemCurve(this);
+		TraceHitItem = nullptr;
 	}
 }
 
 void ABaseCharacter::InteractButtonReleased()
 {
-
+	// TODO : do we need this?
 }
 
 void ABaseCharacter::ReloadButtonPressed()
@@ -315,24 +332,24 @@ void ABaseCharacter::ReloadButtonPressed()
 
 void ABaseCharacter::InventoryWheelButtonPressed()
 {
-	MainPlayerController->DisplayInventoryWheel();
-	bIsInventoryWheelOpen = true;
+	AimingButtonReleased();
+	FireButtonReleased();
 
-	/*  TODO: add time dilation
-		dont't register player input : use bIsInventoryWheelOpen
-		add post process
-	*/
+	MainPlayerController->DisplayInventoryWheel();
+	CombatState = ECombatState::InInventory;
+
+	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 0.3f);
 }
 
 void ABaseCharacter::InventoryWheelButtonReleased()
 {
 	MainPlayerController->RemoveInventoryWheel();
-	bIsInventoryWheelOpen = false;
+	CombatState = ECombatState::Normal;
 
 	// Get selected Weapon from Wheel Inventory
 	EquipWeapon(GetWeaponInInventory(GetSelectedWeaponType()));
 
-	// TODO : reverse from button pressed
+	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.0f);
 }
 
 void ABaseCharacter::SetDefaultOverlay()
@@ -459,6 +476,9 @@ void ABaseCharacter::UpdateCharacterInformations(float DeltaTime)
 
 void ABaseCharacter::UpdateCharacterCamera(float DeltaTime)
 {
+	// TODO : Update Camera Position
+
+	// Update Camera FOV
 	if (GetIsAiming())
 	{
 		MainAnimInstance->SetShouldSprint(false);
@@ -482,6 +502,16 @@ void ABaseCharacter::UpdateCharacterCamera(float DeltaTime)
 	{
 		// TODO : GetCameraBoom()->SetRelativeLocation(FMath::VInterpTo(GetCameraBoom()->GetRelativeLocation(), FVector(0.0f, 0.0f, 70.0f), DeltaTime, CameraLocationInterpSpeed));
 		GetFollowCamera()->FieldOfView = FMath::FInterpTo(GetFollowCamera()->FieldOfView, CameraDefaultFOV, DeltaTime, CameraFOVInterpSpeed);
+	}
+
+	// Update Camera Global Saturation Color
+	if (CombatState == ECombatState::InInventory)
+	{
+		GetFollowCamera()->PostProcessSettings.ColorSaturation.W = FMath::FInterpTo(GetFollowCamera()->PostProcessSettings.ColorSaturation.W, 0.1f, DeltaTime, CameraSaturationSpeed);
+	}
+	else
+	{
+		GetFollowCamera()->PostProcessSettings.ColorSaturation.W = FMath::FInterpTo(GetFollowCamera()->PostProcessSettings.ColorSaturation.W, 1.0f, DeltaTime, CameraSaturationSpeed);
 	}
 }
 
@@ -566,7 +596,11 @@ void ABaseCharacter::StartFireTimer()
 void ABaseCharacter::AutomaticFireReset()
 {
 	GetWorldTimerManager().ClearTimer(AutomaticFireTimer);
-	CombatState = ECombatState::Normal;
+
+	if (CombatState == ECombatState::Firing)
+	{
+		CombatState = ECombatState::Normal;
+	}
 
 	if (WeaponHasAmmo())
 	{
@@ -725,6 +759,16 @@ void ABaseCharacter::EquipWeapon(AWeapon* WeaponToEquip)
 	else
 	{
 		EquippedWeapon = nullptr;
+	}
+
+	// Display the Ammo Widget if the character have a weapon
+	if (GetSelectedWeaponType() != EWeaponType::Unarmed && GetWeapon())
+	{
+		MainPlayerController->DisplayHUDOverlay();
+	}
+	else
+	{
+		MainPlayerController->HideHUDOverlay();
 	}
 }
 

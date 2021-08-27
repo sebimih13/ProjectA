@@ -24,7 +24,8 @@ enum class ECombatState : uint8
 {
 	Normal			UMETA(DisplayName = "Normal"),
 	Firing			UMETA(DisplayName = "Firing"),
-	Reloading		UMETA(DisplayName = "Reloading")
+	Reloading		UMETA(DisplayName = "Reloading"),
+	InInventory		UMETA(DisplayName = "InInventory")
 };
 
 USTRUCT(BlueprintType)
@@ -224,9 +225,6 @@ private:
 	bool bShouldPlayEquipSound = true;
 
 	/** Inventory Wheel System */
-	bool bIsInventoryWheelOpen = false;
-
-	/** Weapon Inventory */
 	TMap<EWeaponType, AWeapon*> WeaponInventory;
 
 public:
@@ -249,6 +247,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Camera")
 	float CameraLocationInterpSpeed = 20.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Camera")
+	float CameraSaturationSpeed = 6.0f;
 
 	/** Movement */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Movement")
