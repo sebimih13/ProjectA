@@ -10,6 +10,7 @@
 class UTextBlock;
 class UImage;
 class AWeapon;
+class ABaseCharacterPlayerController;
 
 UCLASS()
 class PROJECTA_API UPickupWidget : public UUserWidget
@@ -23,11 +24,22 @@ public:
 protected:
 	virtual void NativeConstruct() override;
 
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+
 private:
 	/** References */
 	AWeapon* Weapon;
+	ABaseCharacterPlayerController* PlayerController;
 
 public:
+	/** DualShock 4 Controller Button Image */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
+	UTexture2D* DS4Icon;
+
+	/** Xbox Controller Button Image */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
+	UTexture2D* XBIcon;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
 	UTextBlock* ItemNameText;
 
@@ -51,6 +63,12 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
 	UImage* DollarIcon5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
+	UImage* ControllerButtonIcon;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
+	UTextBlock* IconKey;
 
 public:
 	/** FORCEINLINE Setters / Getters */

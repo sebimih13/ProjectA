@@ -17,6 +17,13 @@ enum class EInputType : uint8
 	KeyboardMouse	UMETA(DisplayName = "KeyboardMouse")
 };
 
+UENUM(BlueprintType)
+enum class EControllerType : uint8
+{
+	DualShock4		UMETA(DisplayName = "DualShock4"),
+	Xbox			UMETA(DisplayName = "Xbox")
+};
+
 UCLASS()
 class PROJECTA_API ABaseCharacterPlayerController : public APlayerController
 {
@@ -52,6 +59,9 @@ private:
 	/** Input Type */
 	EInputType InputType = EInputType::KeyboardMouse;
 
+	/** Controller Type */
+	EControllerType ControllerType = EControllerType::DualShock4;
+
 	/** Gamepad Right Joystick Input */
 	FVector2D GamepadInput = FVector2D::ZeroVector;
 
@@ -71,6 +81,9 @@ public:
 	/** FORCEINLINE Setters / Getters */
 	FORCEINLINE EInputType GetInputType() const { return InputType; };
 	FORCEINLINE void SetInputType(EInputType Type) { InputType = Type; };
+
+	FORCEINLINE EControllerType GetControllerType() const { return ControllerType; };
+	FORCEINLINE void SetControllerType(EControllerType Type) { ControllerType = Type; };
 
 	FORCEINLINE FVector2D GetGamepadInput() const { return GamepadInput; };
 };
