@@ -10,6 +10,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Sound/SoundCue.h"
 
 #include "Kismet/KismetMathLibrary.h"
@@ -23,7 +24,6 @@
 
 // TODO : debug
 #include "DrawDebugHelpers.h"
-#include "Components/CapsuleComponent.h"
 
 // Sets default values
 ABaseCharacter::ABaseCharacter()
@@ -151,6 +151,7 @@ void ABaseCharacter::Tick(float DeltaTime)
 		}
 	}
 	GEngine->AddOnScreenDebugMessage(30, 0, FColor::Black, CombatState == ECombatState::InInventory ? TEXT("In Inventory") : TEXT("Not in Inventory"), false);
+	GEngine->AddOnScreenDebugMessage(40, 0, FColor::Black, CombatState == ECombatState::Equipping ? TEXT("Equipping") : TEXT("Not Equipping"), false);
 }
 
 // Called to bind functionality to input
@@ -211,14 +212,14 @@ void ABaseCharacter::MoveRight(float Value)
 
 void ABaseCharacter::TurnAtRate(float Rate)
 {
-	if (CombatState == ECombatState::InInventory) return;
+	if (GetCombatState() == ECombatState::InInventory) return;
 
 	AddControllerYawInput(LookRightLeftRate * Rate);
 }
 
 void ABaseCharacter::LookUpAtRate(float Rate)
 {
-	if (CombatState == ECombatState::InInventory) return;
+	if (GetCombatState() == ECombatState::InInventory) return;
 
 	AddControllerPitchInput(LookUpDownRate * Rate);
 }
@@ -252,7 +253,7 @@ void ABaseCharacter::StopSprint()
 
 void ABaseCharacter::StartJump()
 {
-	if (CombatState == ECombatState::InInventory) return;
+	if (GetCombatState() == ECombatState::InInventory) return;
 
 	MainAnimInstance->SetJumped(true);
 	GetWorldTimerManager().SetTimer(JumpingTimer, this, &ABaseCharacter::ResetJump, 0.1f);
@@ -281,10 +282,10 @@ void ABaseCharacter::StartCrouch()
 
 void ABaseCharacter::AimingButtonPressed()
 {
-	if (CombatState == ECombatState::InInventory) return;
+	if (GetCombatState() == ECombatState::InInventory) return;
 
 	bAimingButtonPressed = true;
-	if (CombatState != ECombatState::Reloading)
+	if (GetCombatState() != ECombatState::Reloading)
 	{
 		StartAiming();
 	}
@@ -298,7 +299,7 @@ void ABaseCharacter::AimingButtonReleased()
 
 void ABaseCharacter::FireButtonPressed()
 {
-	if (CombatState == ECombatState::InInventory) return;
+	if (GetCombatState() == ECombatState::InInventory) return;
 
 	bFireButtonPressed = true;
 	FireWeapon();
@@ -311,11 +312,11 @@ void ABaseCharacter::FireButtonReleased()
 
 void ABaseCharacter::InteractButtonPressed()
 {
-	if (CombatState == ECombatState::InInventory) return;
+	if (GetCombatState() == ECombatState::InInventory) return;
 
 	if (TraceHitItem)
 	{
-		TraceHitItem->StartItemCurve(this);
+		TraceHitItem->StartItemCurve(this, true);
 		TraceHitItem = nullptr;
 	}
 }
@@ -336,7 +337,7 @@ void ABaseCharacter::InventoryWheelButtonPressed()
 	FireButtonReleased();
 
 	MainPlayerController->DisplayInventoryWheel();
-	CombatState = ECombatState::InInventory;
+	SetCombatState(ECombatState::InInventory);
 
 	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 0.3f);
 }
@@ -344,7 +345,7 @@ void ABaseCharacter::InventoryWheelButtonPressed()
 void ABaseCharacter::InventoryWheelButtonReleased()
 {
 	MainPlayerController->RemoveInventoryWheel();
-	CombatState = ECombatState::Normal;
+	SetCombatState(ECombatState::Normal);
 
 	// Get selected Weapon from Wheel Inventory
 	EquipWeapon(GetWeaponInInventory(GetSelectedWeaponType()));
@@ -505,7 +506,7 @@ void ABaseCharacter::UpdateCharacterCamera(float DeltaTime)
 	}
 
 	// Update Camera Global Saturation Color
-	if (CombatState == ECombatState::InInventory)
+	if (GetCombatState() == ECombatState::InInventory)
 	{
 		GetFollowCamera()->PostProcessSettings.ColorSaturation.W = FMath::FInterpTo(GetFollowCamera()->PostProcessSettings.ColorSaturation.W, 0.1f, DeltaTime, CameraSaturationSpeed);
 	}
@@ -527,13 +528,13 @@ void ABaseCharacter::UpdateTraceForItems()
 			// Show Item's Pickup Widget and enable Custom Depth
 			if (TraceHitItem && TraceHitItem->GetPickupWidget())
 			{
-				TraceHitItem->GetPickupWidget()->SetVisibility(true);
+				TraceHitItem->DisplayWidget();
 				TraceHitItem->EnableCustomDepth();
 			}
 
 			if (LastTraceHitItem && LastTraceHitItem != TraceHitItem)
 			{
-				LastTraceHitItem->GetPickupWidget()->SetVisibility(false);
+				LastTraceHitItem->HideWidget();
 				LastTraceHitItem->DisableCustomDepth();
 			}
 			LastTraceHitItem = TraceHitItem;
@@ -541,7 +542,7 @@ void ABaseCharacter::UpdateTraceForItems()
 	}
 	else if (LastTraceHitItem)
 	{
-		LastTraceHitItem->GetPickupWidget()->SetVisibility(false);
+		LastTraceHitItem->HideWidget();
 		LastTraceHitItem->DisableCustomDepth();
 	}
 }
@@ -589,7 +590,7 @@ void ABaseCharacter::FinishCrosshairBulletFire()
 
 void ABaseCharacter::StartFireTimer()
 {
-	CombatState = ECombatState::Firing;
+	SetCombatState(ECombatState::Firing);
 	GetWorldTimerManager().SetTimer(AutomaticFireTimer, this, &ABaseCharacter::AutomaticFireReset, AutomaticFireRate);
 }
 
@@ -597,9 +598,9 @@ void ABaseCharacter::AutomaticFireReset()
 {
 	GetWorldTimerManager().ClearTimer(AutomaticFireTimer);
 
-	if (CombatState == ECombatState::Firing)
+	if (GetCombatState() == ECombatState::Firing)
 	{
-		CombatState = ECombatState::Normal;
+		SetCombatState(ECombatState::Normal);
 	}
 
 	if (WeaponHasAmmo())
@@ -617,7 +618,7 @@ void ABaseCharacter::AutomaticFireReset()
 
 void ABaseCharacter::FireWeapon()
 {
-	if (!WeaponHasAmmo() || !GetWeapon() || !GetIsAiming() || CombatState != ECombatState::Normal) return;
+	if (!WeaponHasAmmo() || !GetWeapon() || !GetIsAiming() || GetCombatState() != ECombatState::Normal) return;
 
 	// Get viewport size
 	FVector2D ViewportSize;
@@ -753,6 +754,15 @@ void ABaseCharacter::EquipWeapon(AWeapon* WeaponToEquip)
 	// Equip the new Weapon
 	if (WeaponToEquip)
 	{
+		if (WeaponToEquip != GetWeapon())
+		{
+			SetCombatState(ECombatState::Equipping);
+			MainAnimInstance->Montage_Play(EquipMontage);
+			MainAnimInstance->Montage_JumpToSection(FName("Equip"));
+
+			WeaponToEquip->PlayEquipSound(true);
+		}
+
 		EquippedWeapon = WeaponToEquip;
 		GetWeapon()->SetItemState(EItemState::Equipped);
 	}
@@ -782,7 +792,7 @@ void ABaseCharacter::DropWeapon(AWeapon* WeaponToDrop)
 
 void ABaseCharacter::ReloadWeapon()
 {
-	if (CombatState != ECombatState::Normal || !GetWeapon()) return;
+	if (GetCombatState() != ECombatState::Normal || !GetWeapon()) return;
 
 	if (CarryingAmmo() && !GetWeapon()->GetClipIsFull())
 	{
@@ -791,7 +801,7 @@ void ABaseCharacter::ReloadWeapon()
 			StopAiming();
 		}
 
-		CombatState = ECombatState::Reloading;
+		SetCombatState(ECombatState::Reloading);
 		MainAnimInstance->Montage_Play(ReloadMontage);
 		MainAnimInstance->Montage_JumpToSection(EquippedWeapon->GetReloadMontageSection());
 	}
@@ -799,7 +809,7 @@ void ABaseCharacter::ReloadWeapon()
 
 void ABaseCharacter::FinishReloading()
 {
-	CombatState = ECombatState::Normal;
+	SetCombatState(ECombatState::Normal);
 
 	if (bAimingButtonPressed)
 	{

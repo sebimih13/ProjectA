@@ -52,6 +52,8 @@ void UPickupWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
+	if (!ControllerButtonIcon || !IconKey) return;
+
 	// Update Button
 	if (PlayerController)
 	{

@@ -10,7 +10,7 @@ void USwitchMagazineAnimNotifyState::NotifyBegin(USkeletalMeshComponent* MeshCom
 	Super::NotifyBegin(MeshComp, Animation, TotalDuration);
 
 	ABaseCharacter* Character = Cast<ABaseCharacter>(MeshComp->GetOwner());
-	if (Character)
+	if (Character && Character->GetWeapon())
 	{
 		int32 ClipBoneIndex = Character->GetWeapon()->GetWeaponMesh()->GetBoneIndex(FName("Clip_Bone"));
 		Character->GetLeftHandSceneComponent()->SetWorldTransform(Character->GetWeapon()->GetWeaponMesh()->GetBoneTransform(ClipBoneIndex));
@@ -31,6 +31,12 @@ void USwitchMagazineAnimNotifyState::NotifyTick(USkeletalMeshComponent* MeshComp
 	ABaseCharacter* Character = Cast<ABaseCharacter>(MeshComp->GetOwner());
 	if (Character)
 	{
+		if (!Character->GetWeapon())
+		{
+			Character->StopAnimMontage(Character->ReloadMontage);
+			return;
+		}
+
 		UWeaponAnimInstance* WeaponAnimInstance = Cast<UWeaponAnimInstance>(Character->GetWeapon()->GetWeaponMesh()->GetAnimInstance());
 		if (WeaponAnimInstance)
 		{
@@ -45,7 +51,7 @@ void USwitchMagazineAnimNotifyState::NotifyEnd(USkeletalMeshComponent* MeshComp,
 	Super::NotifyEnd(MeshComp, Animation);
 
 	ABaseCharacter* Character = Cast<ABaseCharacter>(MeshComp->GetOwner());
-	if (Character)
+	if (Character && Character->GetWeapon())
 	{
 		UWeaponAnimInstance* WeaponAnimInstance = Cast<UWeaponAnimInstance>(Character->GetWeapon()->GetWeaponMesh()->GetAnimInstance());
 		if (WeaponAnimInstance)

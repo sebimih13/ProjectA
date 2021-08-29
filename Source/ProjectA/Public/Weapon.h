@@ -9,7 +9,8 @@
 #include "Weapon.generated.h"
 
 /** Forward Declarations */
-
+class USwitchWeaponWidget;
+class UPickupWidget;
 
 UCLASS()
 class PROJECTA_API AWeapon : public AItem
@@ -40,6 +41,12 @@ private:
 	FTimerHandle ThrowWeaponTimer;
 	float ThrowWeaponTime = 0.7f;
 	bool bFalling = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UPickupWidget> WeaponPickupWidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<USwitchWeaponWidget> WeaponSwitchWidgetClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
 	EWeaponType WeaponType = EWeaponType::AssaultRifle;
@@ -74,6 +81,9 @@ public:
 
 	virtual void EnableCustomDepth() override;
 	virtual void DisableCustomDepth() override;
+
+	virtual void DisplayWidget() override;
+	virtual void HideWidget() override;
 
 	/** FORCEINLINE Setters / Getters */
 	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; };

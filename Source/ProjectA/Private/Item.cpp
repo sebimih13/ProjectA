@@ -157,13 +157,13 @@ void AItem::SetItemProperties()
 	}
 }
 
-void AItem::StartItemCurve(ABaseCharacter* BaseCharacter)
+void AItem::StartItemCurve(ABaseCharacter* BaseCharacter, bool bForcePlaySound)
 {
 	Character = BaseCharacter;
 	SetItemState(EItemState::EquipInterping);
 	GetWorldTimerManager().ClearTimer(PulseTimer);
 
-	PlayPickupSound();
+	PlayPickupSound(bForcePlaySound);
 
 	// Add 1 for the ItemCount for this InterLocation struct
 	InterpLocationIndex = Character->GetInterpLocationIndex();
@@ -253,8 +253,13 @@ FVector AItem::GetInterpLocation()
 	return FVector::ZeroVector;
 }
 
-void AItem::PlayPickupSound()
+void AItem::PlayPickupSound(bool bForcePlaySound)
 {
+	if (bForcePlaySound && PickupSound)
+	{
+		UGameplayStatics::PlaySound2D(this, PickupSound);
+	}
+
 	if (Character && Character->GetShouldPlayPickupSound())
 	{
 		Character->StartPickupSoundTimer();
@@ -265,8 +270,13 @@ void AItem::PlayPickupSound()
 	}
 }
 
-void AItem::PlayEquipSound()
+void AItem::PlayEquipSound(bool bForcePlaySound)
 {
+	if (bForcePlaySound && EquipSound)
+	{
+		UGameplayStatics::PlaySound2D(this, EquipSound);
+	}
+
 	if (Character && Character->GetShouldPlayEquipSound())
 	{
 		Character->StartEquipSoundTimer();
@@ -350,5 +360,15 @@ void AItem::UpdatePulse()
 		DynamicMaterialInstance->SetScalarParameterValue(FName("FresnelExponent"), CurveValue.Y * FresnelExponent);
 		DynamicMaterialInstance->SetScalarParameterValue(FName("FresnelReflectFraction"), CurveValue.Z * FresnelReflectFraction);
 	}
+}
+
+void AItem::DisplayWidget()
+{
+	GetPickupWidget()->SetVisibility(true);
+}
+
+void AItem::HideWidget()
+{
+	GetPickupWidget()->SetVisibility(false);
 }
 

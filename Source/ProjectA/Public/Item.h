@@ -160,10 +160,6 @@ private:
 	/** Get Interp Location based on the item type */
 	FVector GetInterpLocation();
 
-	/** Sound */
-	void PlayPickupSound();
-	void PlayEquipSound();
-
 	void InitializeCustomDepth();
 
 	/** Pulse System */
@@ -171,7 +167,11 @@ private:
 	void UpdatePulse();
 		 
 public:
-	void StartItemCurve(ABaseCharacter* BaseCharacter);
+	/** Sound */
+	void PlayPickupSound(bool bForcePlaySound = false);
+	void PlayEquipSound(bool bForcePlaySound = false);
+
+	void StartItemCurve(ABaseCharacter* BaseCharacter, bool bForcePlaySound = false);
 
 	virtual void EnableCustomDepth();
 	virtual void DisableCustomDepth();
@@ -181,6 +181,9 @@ public:
 
 	/** Start Pulse */
 	void StartPulseTimer();
+
+	virtual void DisplayWidget();
+	virtual void HideWidget();
 
 	/** FORCEINLINE Setters / Getters */
 	FORCEINLINE UBoxComponent* GetCollisionBox() const { return CollisionBox; };

@@ -25,6 +25,7 @@ enum class ECombatState : uint8
 	Normal			UMETA(DisplayName = "Normal"),
 	Firing			UMETA(DisplayName = "Firing"),
 	Reloading		UMETA(DisplayName = "Reloading"),
+	Equipping		UMETA(DisplayName = "Equipping"),
 	InInventory		UMETA(DisplayName = "InInventory")
 };
 
@@ -276,6 +277,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
 	UAnimMontage* ReloadMontage;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
+	UAnimMontage* EquipMontage;
+
 	/** Particles spawned upon bullet impact */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
 	UParticleSystem* ImpactParticles;
@@ -429,5 +433,8 @@ public:
 
 	FORCEINLINE EWeaponType GetSelectedWeaponType() const { return SelectedWeaponType; };
 	FORCEINLINE void SetSelectedWeaponType(EWeaponType Type) { SelectedWeaponType = Type; };
+
+	FORCEINLINE ECombatState GetCombatState() const { return CombatState; };
+	FORCEINLINE void SetCombatState(ECombatState DesiredState) { CombatState = DesiredState; };
 };
 

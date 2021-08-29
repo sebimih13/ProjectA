@@ -4,8 +4,11 @@
 #include "Components/BoxComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 #include "PickupWidget.h"
+#include "SwitchWeaponWidget.h"
+#include "BaseCharacter.h"
 
 AWeapon::AWeapon()
 {
@@ -26,13 +29,6 @@ void AWeapon::BeginPlay()
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	// Set Pickup Widget Reference to this class
-	UPickupWidget* PickupWidget = Cast<UPickupWidget>(GetPickupWidget()->GetUserWidgetObject());
-	if (PickupWidget)
-	{
-		PickupWidget->SetWeaponReference(this);
-	}
-
 	switch (WeaponType)
 	{
 	case EWeaponType::AssaultRifle:		ReloadMontageSection = FName("ReloadRifle");			break;
@@ -45,6 +41,13 @@ void AWeapon::BeginPlay()
 	}
 }
 
+void AWeapon::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+
+	WeaponMesh->SetMaterial(GetMaterialIndex(), GetDynamicMaterialInstance());
+}
+
 void AWeapon::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -54,13 +57,6 @@ void AWeapon::Tick(float DeltaTime)
 		const FRotator MeshRotation = FRotator(0.0f, WeaponMesh->GetComponentRotation().Yaw, 0.0f);
 		WeaponMesh->SetWorldRotation(MeshRotation, false, nullptr, ETeleportType::TeleportPhysics);
 	}
-}
-
-void AWeapon::OnConstruction(const FTransform& Transform)
-{
-	Super::OnConstruction(Transform);
-
-	WeaponMesh->SetMaterial(GetMaterialIndex(), GetDynamicMaterialInstance());
 }
 
 void AWeapon::SetItemProperties()
@@ -180,6 +176,65 @@ void AWeapon::DisableCustomDepth()
 	if (GetCanChangeCustomDepth())
 	{
 		WeaponMesh->SetRenderCustomDepth(false);
+	}
+}
+
+void AWeapon::DisplayWidget()
+{
+	Super::DisplayWidget();
+
+	ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(UGameplayStatics::GetPlayerPawn(GetWorld(), 0));
+
+	// TODO : WHILE WE ARE DISPLAYING THE SWITCH WIDGET WE NEED TO MAKE SURE THAT IF WE HAVE CHANGED THE WEAPONS, WE ARE SHOWING THE RIGHT ONE
+
+	// Choose Widget based on what Character wants to do : SWAP or PICK UP
+	if (BaseCharacter)
+	{
+		if (BaseCharacter->GetWeaponInInventory(GetWeaponType()))	// SWAP WIDGET
+		{
+			GetPickupWidget()->SetDrawSize(FVector2D(360.0f, 300.0f));
+			GetPickupWidget()->SetRelativeLocation(FVector(0.0f, 0.0f, 100.0f));
+
+			if (WeaponSwitchWidgetClass)
+			{
+				GetPickupWidget()->SetWidgetClass(WeaponSwitchWidgetClass);
+
+				USwitchWeaponWidget* SwitchWeaponWidget = Cast<USwitchWeaponWidget>(GetPickupWidget()->GetUserWidgetObject());
+				if (SwitchWeaponWidget)
+				{
+					SwitchWeaponWidget->SetWeaponToTakeReference(this);
+					SwitchWeaponWidget->SetWeaponInInventoryReference(BaseCharacter->GetWeaponInInventory(GetWeaponType()));
+				}
+			}
+		}
+		else	// PICK UP WIDGET
+		{
+			GetPickupWidget()->SetDrawSize(FVector2D(360.0f, 125.0f));
+			GetPickupWidget()->SetRelativeLocation(FVector(0.0f, 0.0f, 70.0f));
+
+			if (WeaponPickupWidgetClass)
+			{
+				GetPickupWidget()->SetWidgetClass(WeaponPickupWidgetClass);
+
+				UPickupWidget* PickupWidget = Cast<UPickupWidget>(GetPickupWidget()->GetUserWidgetObject());
+				if (PickupWidget)
+				{
+					PickupWidget->SetWeaponReference(this);
+				}
+			}
+		}
+	}
+}
+
+void AWeapon::HideWidget()
+{
+	Super::HideWidget();
+
+	// Delete last created widgets
+	USwitchWeaponWidget* SwitchWeaponWidget = Cast<USwitchWeaponWidget>(GetPickupWidget()->GetUserWidgetObject());
+	if (SwitchWeaponWidget)
+	{
+		SwitchWeaponWidget->DeleteCreatedWidgets();
 	}
 }
 

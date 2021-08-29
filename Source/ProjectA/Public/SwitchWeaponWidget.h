@@ -4,22 +4,26 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "PickupWidget.generated.h"
+#include "SwitchWeaponWidget.generated.h"
 
 /** Forward Declarations */
-class UTextBlock;
+class UVerticalBox;
 class UImage;
+class UTextBlock;
+
+class UPickupWidget;
 class AWeapon;
 class ABaseCharacterPlayerController;
 
+
 UCLASS()
-class PROJECTA_API UPickupWidget : public UUserWidget
+class PROJECTA_API USwitchWeaponWidget : public UUserWidget
 {
 	GENERATED_BODY()
 	
 public:
 	/** Constructor */
-	UPickupWidget(const FObjectInitializer& ObjectInitializer);
+	USwitchWeaponWidget(const FObjectInitializer& ObjectInitializer);
 
 protected:
 	virtual void NativeConstruct() override;
@@ -28,7 +32,12 @@ protected:
 
 private:
 	/** References */
-	AWeapon* Weapon;
+	AWeapon* WeaponInInventory;
+	AWeapon* WeaponToTake;
+
+	UPickupWidget* WeaponInInventoryPickupWidget;
+	UPickupWidget* WeaponToTakePickupWidget;
+
 	ABaseCharacterPlayerController* PlayerController;
 
 public:
@@ -40,39 +49,29 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
 	UTexture2D* XBIcon;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
+	TSubclassOf<UPickupWidget> WeaponPickupWidgetClass;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
-	UTextBlock* ItemNameText;
+	UVerticalBox* WeaponInInventoryBox;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
-	UTextBlock* AmountText;
+	UVerticalBox* WeaponToTakeBox;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
-	UImage* AmmoImage;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
-	UImage* DollarIcon1;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
-	UImage* DollarIcon2;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
-	UImage* DollarIcon3;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
-	UImage* DollarIcon4;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
-	UImage* DollarIcon5;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidgetOptional))
 	UImage* ControllerButtonIcon;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidgetOptional))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
 	UTextBlock* IconKey;
 
+private:
+	void CreateWeaponPickupWidget(UPickupWidget*& WidgetToHold, AWeapon* Weapon, UVerticalBox* Box);
+
 public:
+	void DeleteCreatedWidgets();
+
 	/** FORCEINLINE Setters / Getters */
-	void SetWeaponReference(AWeapon* WeaponReference) { Weapon = WeaponReference; };
-	AWeapon* GetWeaponReference() const { return Weapon; };	// todo
+	void SetWeaponInInventoryReference(AWeapon* WeaponReference) { WeaponInInventory = WeaponReference; };
+	void SetWeaponToTakeReference(AWeapon* WeaponReference) { WeaponToTake = WeaponReference; };
 };
 
