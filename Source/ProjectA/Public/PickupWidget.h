@@ -40,6 +40,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
 	UTexture2D* XBIcon;
 
+	/** Top Background */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
+	UImage* RightTopBackground;
+
+	/** Bottom Background */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
+	UImage* RightBottomBackground;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
 	UTextBlock* ItemNameText;
 
@@ -50,19 +58,19 @@ public:
 	UImage* AmmoImage;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
-	UImage* DollarIcon1;
+	UImage* StarIcon1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
-	UImage* DollarIcon2;
+	UImage* StarIcon2;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
-	UImage* DollarIcon3;
+	UImage* StarIcon3;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
-	UImage* DollarIcon4;
+	UImage* StarIcon4;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
-	UImage* DollarIcon5;
+	UImage* StarIcon5;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidgetOptional))
 	UImage* ControllerButtonIcon;

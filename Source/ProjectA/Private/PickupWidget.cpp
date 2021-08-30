@@ -21,29 +21,32 @@ void UPickupWidget::NativeConstruct()
 
 	if (Weapon)
 	{
+		RightTopBackground->SetColorAndOpacity(Weapon->GetLightColorBackground());
+		RightBottomBackground->SetColorAndOpacity(Weapon->GetDarkColorBackground());
+
 		ItemNameText->SetText(FText::FromString(Weapon->GetItemName()));
 		AmountText->SetText(FText::FromString(FString::FromInt(Weapon->GetItemsCount())));
 		AmmoImage->SetBrushFromTexture(Weapon->GetAmmoIconTexture());
 
-		if (Weapon->GetDollarsCount() >= 1)
+		if (Weapon->GetNumberOfStars() >= 1)
 		{
-			DollarIcon1->SetOpacity(1.0f);
+			StarIcon1->SetOpacity(1.0f);
 		}
-		if (Weapon->GetDollarsCount() >= 2)
+		if (Weapon->GetNumberOfStars() >= 2)
 		{
-			DollarIcon2->SetOpacity(1.0f);
+			StarIcon2->SetOpacity(1.0f);
 		}
-		if (Weapon->GetDollarsCount() >= 3)
+		if (Weapon->GetNumberOfStars() >= 3)
 		{
-			DollarIcon3->SetOpacity(1.0f);
+			StarIcon3->SetOpacity(1.0f);
 		}
-		if (Weapon->GetDollarsCount() >= 4)
+		if (Weapon->GetNumberOfStars() >= 4)
 		{
-			DollarIcon4->SetOpacity(1.0f);
+			StarIcon4->SetOpacity(1.0f);
 		}
-		if (Weapon->GetDollarsCount() >= 5)
+		if (Weapon->GetNumberOfStars() >= 5)
 		{
-			DollarIcon5->SetOpacity(1.0f);
+			StarIcon5->SetOpacity(1.0f);
 		}
 	}
 }

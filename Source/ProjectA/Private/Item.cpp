@@ -6,8 +6,8 @@
 #include "Components/WidgetComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Sound/SoundCue.h"
-#include "Kismet/GameplayStatics.h"
 #include "Curves/CurveVector.h"
+#include "Kismet/GameplayStatics.h"
 
 #include "BaseCharacter.h"
 
@@ -34,8 +34,8 @@ void AItem::OnConstruction(const FTransform& Transform)
 	if (MaterialInstance)
 	{
 		DynamicMaterialInstance = UMaterialInstanceDynamic::Create(MaterialInstance, this);
-	}	
-	EnableGlowMaterial();
+		EnableGlowMaterial();
+	}
 }
 
 // Called when the game starts or when spawned

@@ -22,6 +22,90 @@ AWeapon::AWeapon()
 	GetPickupWidget()->SetupAttachment(GetRootComponent());
 }
 
+void AWeapon::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+
+	if (ItemRarityDataTable)
+	{
+		FItemRarityTable* RarityRow = nullptr;
+		switch (ItemRarity)
+		{
+		case EItemRarity::Common:	 RarityRow = ItemRarityDataTable->FindRow<FItemRarityTable>(FName("Common"),	 TEXT(""));	break;
+		case EItemRarity::Uncommon:  RarityRow = ItemRarityDataTable->FindRow<FItemRarityTable>(FName("Uncommon"),   TEXT(""));	break;
+		case EItemRarity::Rare:		 RarityRow = ItemRarityDataTable->FindRow<FItemRarityTable>(FName("Rare"),		 TEXT(""));	break;
+		case EItemRarity::Epic:		 RarityRow = ItemRarityDataTable->FindRow<FItemRarityTable>(FName("Epic"),		 TEXT(""));	break;
+		case EItemRarity::Legendary: RarityRow = ItemRarityDataTable->FindRow<FItemRarityTable>(FName("Legendary"),  TEXT(""));	break;
+		}
+
+		if (RarityRow)
+		{
+			GlowColor = RarityRow->GlowColor;
+			LightColorBackground = RarityRow->LightColorBackground;
+			DarkColorBackground = RarityRow->DarkColorBackground;
+			NumberOfStars = RarityRow->NumberOfStars;
+			WeaponMesh->SetCustomDepthStencilValue(RarityRow->CustomDepthStencil);
+		}
+	}
+
+	if (WeaponDataTable)
+	{
+		FWeaponDataTable* WeaponRow = nullptr;
+		switch (Weapon)
+		{
+		// WeaponType == AssaultRifle
+		case EWeapon::AssaultRifleSilver:	 WeaponRow = WeaponDataTable->FindRow<FWeaponDataTable>(FName("AssaultRifleSilver"),	TEXT(""));	break;
+		case EWeapon::AssaultRifleDark:		 WeaponRow = WeaponDataTable->FindRow<FWeaponDataTable>(FName("AssaultRifleDark"),		TEXT(""));	break;
+
+		// WeaponType == Pistol
+		case EWeapon::PistolSilver:			 WeaponRow = WeaponDataTable->FindRow<FWeaponDataTable>(FName("PistolSilver"),			TEXT(""));	break;
+		case EWeapon::PistolDark:			 WeaponRow = WeaponDataTable->FindRow<FWeaponDataTable>(FName("PistolDark"),			TEXT(""));	break;
+
+		// WeaponType == Shotgun
+		case EWeapon::ShotgunSilver:		 WeaponRow = WeaponDataTable->FindRow<FWeaponDataTable>(FName("ShotgunSilver"),			TEXT(""));	break;
+		case EWeapon::ShotgunDark:			 WeaponRow = WeaponDataTable->FindRow<FWeaponDataTable>(FName("ShotgunDark"),			TEXT(""));	break;
+
+		// WeaponType == Sniper
+		case EWeapon::SniperSilver:			 WeaponRow = WeaponDataTable->FindRow<FWeaponDataTable>(FName("SniperSilver"),			TEXT(""));	break;
+		case EWeapon::SniperDark:			 WeaponRow = WeaponDataTable->FindRow<FWeaponDataTable>(FName("SniperDark"),			TEXT(""));	break;
+
+		// WeaponType == GrenadeLauncher
+		case EWeapon::GrenadeLauncherSilver: WeaponRow = WeaponDataTable->FindRow<FWeaponDataTable>(FName("GrenadeLauncherSilver"),	TEXT(""));	break;
+		case EWeapon::GrenadeLauncherDark:	 WeaponRow = WeaponDataTable->FindRow<FWeaponDataTable>(FName("GrenadeLauncherDark"),	TEXT(""));	break;
+
+		// WeaponType == RocketLauncher
+		case EWeapon::RocketLauncherSilver:	 WeaponRow = WeaponDataTable->FindRow<FWeaponDataTable>(FName("RocketLauncherSilver"),	TEXT(""));	break;
+		case EWeapon::RocketLauncherDark:	 WeaponRow = WeaponDataTable->FindRow<FWeaponDataTable>(FName("RocketLauncherDark"),	TEXT(""));	break;
+
+		// WeaponType == SMG
+		case EWeapon::SMG:					 WeaponRow = WeaponDataTable->FindRow<FWeaponDataTable>(FName("SMG"),					TEXT(""));	break;
+		}
+
+		if (WeaponRow)
+		{
+			WeaponMesh->SetSkeletalMesh(WeaponRow->Mesh);
+			WeaponType = WeaponRow->WeaponType;
+			AmmoType = WeaponRow->AmmoType;
+			Ammo = WeaponRow->Ammo;
+			AmmoMagazineCapacity = WeaponRow->AmmoMagazineCapacity;
+			AmmoIconTexture = WeaponRow->AmmoIconTexture;
+			WeaponIconTexture = WeaponRow->WeaponIconTexture;
+			ReloadMontageSection = WeaponRow->ReloadMontageSection;
+			SetItemName(WeaponRow->WeaponName);
+			SetMaterialInstance(WeaponRow->MaterialInstance);
+			SetMaterialIndex(WeaponRow->MaterialIndex);
+		}
+
+		if (GetMaterialInstance())
+		{
+			SetDynamicMaterialInstance(UMaterialInstanceDynamic::Create(GetMaterialInstance(), this));
+			GetDynamicMaterialInstance()->SetVectorParameterValue(FName("FresnelColor"), GlowColor);
+			WeaponMesh->SetMaterial(GetMaterialIndex(), GetDynamicMaterialInstance());
+			EnableGlowMaterial();
+		}
+	}
+}
+
 void AWeapon::BeginPlay()
 {
 	Super::BeginPlay();
@@ -29,6 +113,7 @@ void AWeapon::BeginPlay()
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	// TODO : IN A TABLE DATA
 	switch (WeaponType)
 	{
 	case EWeaponType::AssaultRifle:		ReloadMontageSection = FName("ReloadRifle");			break;
@@ -39,13 +124,6 @@ void AWeapon::BeginPlay()
 	case EWeaponType::RocketLauncher:	ReloadMontageSection = FName("ReloadRocketLauncher");	break;
 	case EWeaponType::SMG:				ReloadMontageSection = FName("ReloadSMG");				break;
 	}
-}
-
-void AWeapon::OnConstruction(const FTransform& Transform)
-{
-	Super::OnConstruction(Transform);
-
-	WeaponMesh->SetMaterial(GetMaterialIndex(), GetDynamicMaterialInstance());
 }
 
 void AWeapon::Tick(float DeltaTime)
@@ -184,8 +262,6 @@ void AWeapon::DisplayWidget()
 	Super::DisplayWidget();
 
 	ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(UGameplayStatics::GetPlayerPawn(GetWorld(), 0));
-
-	// TODO : WHILE WE ARE DISPLAYING THE SWITCH WIDGET WE NEED TO MAKE SURE THAT IF WE HAVE CHANGED THE WEAPONS, WE ARE SHOWING THE RIGHT ONE
 
 	// Choose Widget based on what Character wants to do : SWAP or PICK UP
 	if (BaseCharacter)

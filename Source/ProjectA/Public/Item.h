@@ -15,7 +15,6 @@ class UCurveVector;
 class UCurveFloat;
 class ABaseCharacter;
 
-
 UENUM(BlueprintType)
 enum class EItemState : uint8
 {
@@ -67,14 +66,11 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	EItemType ItemType = EItemType::Ammo;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	FString ItemName = FString("Default");
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	int32 ItemsCount = 0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
-	int32 DollarsCount = 1;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	UCurveFloat* CurveItemZ = nullptr;
@@ -106,11 +102,11 @@ private:
 	USoundCue* EquipSound;
 
 	/** Index for the material we change at runtime */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	int32 MaterialIndex = 0;
 
 	/** Material Instance used with the Dynamic Material Instance */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	UMaterialInstance* MaterialInstance;
 
 private:
@@ -191,13 +187,20 @@ public:
 	FORCEINLINE UWidgetComponent* GetPickupWidget() const { return PickupWidgetComponent; };
 
 	FORCEINLINE FString GetItemName() const { return ItemName; };
+	FORCEINLINE void SetItemName(FString Name) { ItemName = Name; };
+
 	FORCEINLINE int32 GetItemsCount() const { return ItemsCount; };
-	FORCEINLINE int32 GetDollarsCount() const { return DollarsCount; };
+
 	FORCEINLINE int32 GetMaterialIndex() const { return MaterialIndex; };
+	FORCEINLINE void SetMaterialIndex(int32 Index) { MaterialIndex = Index; };
+
+	FORCEINLINE UMaterialInstance* GetMaterialInstance() const { return MaterialInstance; };
+	FORCEINLINE void SetMaterialInstance(UMaterialInstance* Instance) { MaterialInstance = Instance; };
 	
 	FORCEINLINE EItemState GetItemState() const { return ItemState; };
 	void SetItemState(EItemState DesiredState);
 
+	FORCEINLINE void SetDynamicMaterialInstance(UMaterialInstanceDynamic* Instance) { DynamicMaterialInstance = Instance; };
 	FORCEINLINE UMaterialInstanceDynamic* GetDynamicMaterialInstance() const { return DynamicMaterialInstance; };
 
 	FORCEINLINE bool GetCanChangeCustomDepth() const { return bCanChangeCustomDepth; };
