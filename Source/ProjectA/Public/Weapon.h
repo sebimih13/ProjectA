@@ -12,6 +12,7 @@
 /** Forward Declarations */
 class USwitchWeaponWidget;
 class UPickupWidget;
+class UWeaponAnimInstance;
 
 UENUM(BlueprintType)
 enum class EItemRarity : uint8
@@ -85,6 +86,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int32 MaterialIndex = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSubclassOf<UWeaponAnimInstance> WeaponAnimInstanceClass;
 };
 
 USTRUCT(BlueprintType)
@@ -210,6 +214,8 @@ public:
 
 	virtual void DisplayWidget() override;
 	virtual void HideWidget() override;
+
+	void Fire();
 
 	/** FORCEINLINE Setters / Getters */
 	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; };

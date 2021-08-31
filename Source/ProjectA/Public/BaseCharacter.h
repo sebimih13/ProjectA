@@ -114,12 +114,6 @@ protected:
 	void InventoryWheelButtonPressed();
 	void InventoryWheelButtonReleased();
 
-	/** Switch Weapons */
-	void SetDefaultOverlay();
-	void SetRifleOverlay();
-	void SetPistol1HOverlay();
-	void SetPistol2HOverlay();
-
 	/** Called for switching inputs */
 	void SwitchInput(FKey Key);
 
@@ -266,12 +260,6 @@ public:
 	float CrouchSpeed = 200.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
-	UAnimationAsset* PistolFire;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
-	UAnimationAsset* RifleFire;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
 	UAnimMontage* HipFireMontage;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration|Weapon")
@@ -378,6 +366,9 @@ private:
 	void InitializeWeaponWheel();
 	void AddWeaponInInventory(AWeapon* WeaponToAdd);
 	EWeaponType SelectedWeaponType = EWeaponType::Unarmed;
+
+	/** Sets the animation overlay based on what weapon we have */
+	void SetAnimationOverlay();
 
 public:
 	/** Adds / Substracts to/from OverlappedItemsCount and updates bShouldTraceForItems */

@@ -6,6 +6,7 @@
 #include "Components/WidgetComponent.h"
 #include "Kismet/GameplayStatics.h"
 
+#include "WeaponAnimInstance.h"
 #include "PickupWidget.h"
 #include "SwitchWeaponWidget.h"
 #include "BaseCharacter.h"
@@ -94,15 +95,16 @@ void AWeapon::OnConstruction(const FTransform& Transform)
 			SetItemName(WeaponRow->WeaponName);
 			SetMaterialInstance(WeaponRow->MaterialInstance);
 			SetMaterialIndex(WeaponRow->MaterialIndex);
+			GetWeaponMesh()->SetAnimInstanceClass(WeaponRow->WeaponAnimInstanceClass);
 		}
-
-		if (GetMaterialInstance())
-		{
-			SetDynamicMaterialInstance(UMaterialInstanceDynamic::Create(GetMaterialInstance(), this));
-			GetDynamicMaterialInstance()->SetVectorParameterValue(FName("FresnelColor"), GlowColor);
-			WeaponMesh->SetMaterial(GetMaterialIndex(), GetDynamicMaterialInstance());
-			EnableGlowMaterial();
-		}
+	}
+	
+	if (GetMaterialInstance())
+	{
+		SetDynamicMaterialInstance(UMaterialInstanceDynamic::Create(GetMaterialInstance(), this));
+		GetDynamicMaterialInstance()->SetVectorParameterValue(FName("FresnelColor"), GlowColor);
+		WeaponMesh->SetMaterial(GetMaterialIndex(), GetDynamicMaterialInstance());
+		EnableGlowMaterial();
 	}
 }
 
@@ -113,17 +115,6 @@ void AWeapon::BeginPlay()
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	// TODO : IN A TABLE DATA
-	switch (WeaponType)
-	{
-	case EWeaponType::AssaultRifle:		ReloadMontageSection = FName("ReloadRifle");			break;
-	case EWeaponType::Pistol:			ReloadMontageSection = FName("ReloadPistol");			break;
-	case EWeaponType::Shotgun:			ReloadMontageSection = FName("ReloadShotgun");			break;
-	case EWeaponType::Sniper:			ReloadMontageSection = FName("ReloadSniper");			break;
-	case EWeaponType::GrenadeLauncher:	ReloadMontageSection = FName("ReloadGrenadeLauncher");	break;
-	case EWeaponType::RocketLauncher:	ReloadMontageSection = FName("ReloadRocketLauncher");	break;
-	case EWeaponType::SMG:				ReloadMontageSection = FName("ReloadSMG");				break;
-	}
 }
 
 void AWeapon::Tick(float DeltaTime)
@@ -153,8 +144,6 @@ void AWeapon::SetItemProperties()
 
 	case EItemState::Equipped:
 		WeaponMesh->SetVisibility(true);
-		UE_LOG(LogTemp, Warning, TEXT("SET VISIBILITY TRUE"));
-
 		WeaponMesh->SetSimulatePhysics(false);
 		WeaponMesh->SetEnableGravity(false);
 		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
@@ -180,8 +169,6 @@ void AWeapon::SetItemProperties()
 
 	case EItemState::PickedUp:
 		WeaponMesh->SetVisibility(false);
-		UE_LOG(LogTemp, Warning, TEXT("SET VISIBILITY FALSE"));
-
 		WeaponMesh->SetSimulatePhysics(false);
 		WeaponMesh->SetEnableGravity(false);
 		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
@@ -311,6 +298,15 @@ void AWeapon::HideWidget()
 	if (SwitchWeaponWidget)
 	{
 		SwitchWeaponWidget->DeleteCreatedWidgets();
+	}
+}
+
+void AWeapon::Fire()
+{
+	UWeaponAnimInstance* AnimInstace = Cast<UWeaponAnimInstance>(GetWeaponMesh()->GetAnimInstance());
+	if (AnimInstace)
+	{
+		AnimInstace->PlayFireAnimation();
 	}
 }
 

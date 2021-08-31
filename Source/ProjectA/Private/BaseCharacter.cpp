@@ -189,12 +189,6 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
 	// TODO : move to player controller
 	PlayerInputComponent->BindAction("SwitchInput", IE_Pressed, this, &ABaseCharacter::SwitchInput);
-
-	// TODO: Overlay
-	PlayerInputComponent->BindAction("Default", IE_Pressed, this, &ABaseCharacter::SetDefaultOverlay);
-	PlayerInputComponent->BindAction("Rifle", IE_Pressed, this, &ABaseCharacter::SetRifleOverlay);
-	PlayerInputComponent->BindAction("Pistol1H", IE_Pressed, this, &ABaseCharacter::SetPistol1HOverlay);
-	PlayerInputComponent->BindAction("Pistol2H", IE_Pressed, this, &ABaseCharacter::SetPistol2HOverlay);
 }
 
 // Input Functions
@@ -351,30 +345,6 @@ void ABaseCharacter::InventoryWheelButtonReleased()
 	EquipWeapon(GetWeaponInInventory(GetSelectedWeaponType()));
 
 	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.0f);
-}
-
-void ABaseCharacter::SetDefaultOverlay()
-{
-	MainAnimInstance->SetOverlayState(EOverlayState::Default);
-	// TODO : WeaponMesh->SetSkeletalMesh(nullptr);
-}
-
-void ABaseCharacter::SetRifleOverlay()
-{
-	MainAnimInstance->SetOverlayState(EOverlayState::Rifle);
-	// TODO : WeaponMesh->SetSkeletalMesh(RifleMesh);
-}
-
-void ABaseCharacter::SetPistol1HOverlay()
-{
-	MainAnimInstance->SetOverlayState(EOverlayState::Pistol1H);
-	// TODO : WeaponMesh->SetSkeletalMesh(PistolMesh);
-}
-
-void ABaseCharacter::SetPistol2HOverlay()
-{
-	MainAnimInstance->SetOverlayState(EOverlayState::Pistol2H);
-	// TODO : WeaponMesh->SetSkeletalMesh(PistolMesh);
 }
 
 void ABaseCharacter::SwitchInput(FKey Key)
@@ -603,16 +573,9 @@ void ABaseCharacter::AutomaticFireReset()
 		SetCombatState(ECombatState::Normal);
 	}
 
-	if (WeaponHasAmmo())
+	if (WeaponHasAmmo() && bFireButtonPressed && GetWeapon()->GetWeaponType() == EWeaponType::AssaultRifle)
 	{
-		if (bFireButtonPressed)
-		{
-			FireWeapon();
-		}
-	}
-	else
-	{
-		ReloadWeapon();
+		FireWeapon();
 	}
 }
 
@@ -657,15 +620,7 @@ void ABaseCharacter::FireWeapon()
 		}
 	}
 
-	/* Play weapon animation  TODO - MOVE ANIMATIONS TO WEAPON CLASS
-	switch (MainAnimInstance->GetOverlayState())
-	{
-	case EOverlayState::Pistol1H: GetWeapon()->GetItemMesh()->PlayAnimation(PistolFire, false); break;
-	case EOverlayState::Pistol2H: GetWeapon()->GetItemMesh()->PlayAnimation(PistolFire, false);	break;
-	case EOverlayState::Rifle:	  GetWeapon()->GetItemMesh()->PlayAnimation(RifleFire, false);	break;
-	}
-	*/
-
+	GetWeapon()->Fire();
 	StartCrosshairBulletFire();
 
 	// Play hipfire animation
@@ -675,11 +630,13 @@ void ABaseCharacter::FireWeapon()
 	// Substract 1 from the Weapon's ammo
 	GetWeapon()->DecrementAmmo();
 
-	// Auto Firing
-	if (MainAnimInstance->GetOverlayState() == EOverlayState::Rifle)
+	if (!WeaponHasAmmo())
 	{
-		StartFireTimer();
+		ReloadWeapon();
 	}
+
+	// Auto Firing
+	StartFireTimer();
 }
 
 void ABaseCharacter::ResetJump()
@@ -780,6 +737,8 @@ void ABaseCharacter::EquipWeapon(AWeapon* WeaponToEquip)
 	{
 		MainPlayerController->HideHUDOverlay();
 	}
+
+	SetAnimationOverlay();
 }
 
 void ABaseCharacter::DropWeapon(AWeapon* WeaponToDrop)
@@ -1033,5 +992,33 @@ void ABaseCharacter::AddWeaponInInventory(AWeapon* WeaponToAdd)
 		DropWeapon(GetWeaponInInventory(WeaponToAdd->GetWeaponType()));
 		WeaponInventory[WeaponToAdd->GetWeaponType()] = WeaponToAdd;
 	}
+}
+
+void ABaseCharacter::SetAnimationOverlay()
+{
+	if (!MainAnimInstance) return;
+
+	if (!GetWeapon())
+	{
+		MainAnimInstance->SetOverlayState(EOverlayState::Default);
+		return;
+	}
+
+	switch (GetWeapon()->GetWeaponType())
+	{
+	case EWeaponType::AssaultRifle:		MainAnimInstance->SetOverlayState(EOverlayState::Rifle);	break;
+	case EWeaponType::Sniper:			MainAnimInstance->SetOverlayState(EOverlayState::Rifle);	break;
+	case EWeaponType::GrenadeLauncher:	MainAnimInstance->SetOverlayState(EOverlayState::Rifle);	break;
+	case EWeaponType::Shotgun:			MainAnimInstance->SetOverlayState(EOverlayState::Rifle);	break;
+	case EWeaponType::Pistol:			MainAnimInstance->SetOverlayState(EOverlayState::Pistol1H);	break;
+
+	// TODO
+	case EWeaponType::RocketLauncher:	MainAnimInstance->SetOverlayState(EOverlayState::Rifle);	break;
+	case EWeaponType::SMG:				MainAnimInstance->SetOverlayState(EOverlayState::Pistol2H);	break;
+	}
+
+	// TODO : FABRIK
+	// TODO : Rotate Grenade Launcher Clip
+	// TODO : Shotgun : Loop reload clip
 }
 

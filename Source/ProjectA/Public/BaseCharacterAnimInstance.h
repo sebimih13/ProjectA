@@ -14,41 +14,42 @@ class UCurveFloat;
 UENUM(BlueprintType)
 enum class EMovementDirection : uint8
 {
-	Forward		UMETA(DisplayName = "Forward"),
-	Right		UMETA(DisplayName = "Right"),
-	Left		UMETA(DisplayName = "Left"),
-	Backward	UMETA(DisplayName = "Backward")
+	Forward			UMETA(DisplayName = "Forward"),
+	Right			UMETA(DisplayName = "Right"),
+	Left			UMETA(DisplayName = "Left"),
+	Backward		UMETA(DisplayName = "Backward")
 };
 
 UENUM(BlueprintType)
 enum class EGait : uint8
 {
-	Walking		UMETA(DisplayName = "Walking"),
-	Running		UMETA(DisplayName = "Running"),
-	Sprinting	UMETA(DisplayName = "Sprinting")
+	Walking			UMETA(DisplayName = "Walking"),
+	Running			UMETA(DisplayName = "Running"),
+	Sprinting		UMETA(DisplayName = "Sprinting")
 };
 
 UENUM(BlueprintType)
 enum class EMovementState : uint8
 {
-	Grounded	UMETA(DisplayName = "Grounded"),
-	InAir		UMETA(DisplayName = "InAir")
+	Grounded		UMETA(DisplayName = "Grounded"),
+	InAir			UMETA(DisplayName = "InAir")
 };
 
 UENUM(BlueprintType)
 enum class EStance : uint8
 {
-	Standing	UMETA(DisplayName = "Standing"),
-	Crouching	UMETA(DisplayName = "Crouching")
+	Standing		UMETA(DisplayName = "Standing"),
+	Crouching		UMETA(DisplayName = "Crouching")
 };
 
 UENUM(BlueprintType)
 enum class EOverlayState : uint8
 {
-	Default		UMETA(DisplayName = "Default"),
-	Rifle		UMETA(DisplayName = "Rifle"),
-	Pistol1H	UMETA(DisplayName = "Pistol1H"),
-	Pistol2H	UMETA(DisplayName = "Pistol2H")
+	Default			UMETA(DisplayName = "Default"),
+	Rifle			UMETA(DisplayName = "Rifle"),
+	Pistol1H		UMETA(DisplayName = "Pistol1H"),
+	Pistol2H		UMETA(DisplayName = "Pistol2H"),
+	RocketLauncher	UMETA(DisplayName = "RocketLauncher")
 };
 
 USTRUCT(BlueprintType)

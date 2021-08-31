@@ -24,3 +24,9 @@ void UWeaponAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	}
 }
 
+void UWeaponAnimInstance::PlayFireAnimation()
+{
+	Montage_Play(FireMontage);
+	Montage_JumpToSection(FName("Fire"));
+}
+

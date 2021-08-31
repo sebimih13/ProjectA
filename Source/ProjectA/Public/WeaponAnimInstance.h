@@ -29,5 +29,12 @@ public:
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Clip")
 	FTransform ClipTransform;
+
+private:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Fire", meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* FireMontage;
+
+public:
+	void PlayFireAnimation();
 };
 
