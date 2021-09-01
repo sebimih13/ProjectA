@@ -488,6 +488,8 @@ void ABaseCharacter::UpdateCharacterCamera(float DeltaTime)
 
 void ABaseCharacter::UpdateTraceForItems()
 {
+	// TODO : CRASH
+
 	if (bShouldTraceForItems)
 	{
 		FHitResult ItemHitResult;
@@ -785,6 +787,21 @@ void ABaseCharacter::FinishReloading()
 		int32& CarriedAmmo = AmmoMap[AmmoType];
 		const int32 MagEmptySpace = GetWeapon()->GetAmmoMagazineCapacity() - GetWeapon()->GetAmmo();
 
+		if (GetWeapon()->GetWeaponType() == EWeaponType::Shotgun)
+		{
+			GetWeapon()->AddAmmo(1);
+			CarriedAmmo--;
+
+			// If we can still reload => reload another bullet
+			if (CarriedAmmo != 0 && MagEmptySpace - 1 > 0)
+			{
+				SetCombatState(ECombatState::Reloading);
+				MainAnimInstance->Montage_Play(ReloadMontage);
+				MainAnimInstance->Montage_JumpToSection(FName("ReloadShotgunClip"));
+			}
+			return;
+		}
+
 		if (MagEmptySpace > CarriedAmmo)
 		{
 			// Reload the magazine with all the ammo we have
@@ -1018,7 +1035,7 @@ void ABaseCharacter::SetAnimationOverlay()
 	}
 
 	// TODO : FABRIK
+	// TODO : FIX ROCKET LAUNCHER ANIMATION + RELOAD ANIMATION
 	// TODO : Rotate Grenade Launcher Clip
-	// TODO : Shotgun : Loop reload clip
 }
 

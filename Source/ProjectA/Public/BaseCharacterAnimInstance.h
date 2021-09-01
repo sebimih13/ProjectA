@@ -48,8 +48,7 @@ enum class EOverlayState : uint8
 	Default			UMETA(DisplayName = "Default"),
 	Rifle			UMETA(DisplayName = "Rifle"),
 	Pistol1H		UMETA(DisplayName = "Pistol1H"),
-	Pistol2H		UMETA(DisplayName = "Pistol2H"),
-	RocketLauncher	UMETA(DisplayName = "RocketLauncher")
+	Pistol2H		UMETA(DisplayName = "Pistol2H")
 };
 
 USTRUCT(BlueprintType)
