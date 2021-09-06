@@ -8,6 +8,7 @@
 
 /** Forward Declarations */
 class UUserWidget;
+class UHUDOverlayWidget;
 class UInventoryWheelWidget;
 
 UENUM(BlueprintType)
@@ -66,14 +67,14 @@ private:
 	FVector2D GamepadInput = FVector2D::ZeroVector;
 
 	/** Widget to hold the overlay created from HUDOverlayClass */
-	UUserWidget* HUDOverlay;
+	UHUDOverlayWidget* HUDOverlay;
 
 	/** Widget to hold the Inventory Wheel Widget created from InventoryWheelClass */
 	UInventoryWheelWidget* InventoryWheelWidget;
 
 public:
-	void DisplayHUDOverlay();
-	void HideHUDOverlay();
+	void SetHUDOverlayVisibility(bool bVisible);
+	void SetAmmoWidgetVisibility(bool bVisible);
 
 	void DisplayInventoryWheel();
 	void RemoveInventoryWheel();
@@ -86,5 +87,7 @@ public:
 	FORCEINLINE void SetControllerType(EControllerType Type) { ControllerType = Type; };
 
 	FORCEINLINE FVector2D GetGamepadInput() const { return GamepadInput; };
+
+	FORCEINLINE UHUDOverlayWidget* GetHUDOverlayWidget() const { return HUDOverlay; };
 };
 

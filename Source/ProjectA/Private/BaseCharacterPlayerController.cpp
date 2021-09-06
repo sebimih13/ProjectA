@@ -2,6 +2,7 @@
 
 #include "BaseCharacterPlayerController.h"
 #include "Blueprint/UserWidget.h"
+#include "HUDOverlayWidget.h"
 #include "InventoryWheelWidget.h"
 
 ABaseCharacterPlayerController::ABaseCharacterPlayerController()
@@ -18,13 +19,13 @@ void ABaseCharacterPlayerController::BeginPlay()
 
 	if (HUDOverlayClass)
 	{
-		HUDOverlay = CreateWidget<UUserWidget>(this, HUDOverlayClass);
+		HUDOverlay = CreateWidget<UHUDOverlayWidget>(this, HUDOverlayClass);
 	}
 
 	if (HUDOverlay)
 	{
 		HUDOverlay->AddToViewport();
-		HUDOverlay->SetVisibility(ESlateVisibility::Hidden);
+		HUDOverlay->SetAmmoWidgetVisibility(false);
 	}
 }
 
@@ -53,14 +54,20 @@ void ABaseCharacterPlayerController::UpdateGamepadRightThumbstickY(float Value)
 	GamepadInput.Y = Value;
 }
 
-void ABaseCharacterPlayerController::DisplayHUDOverlay()
+void ABaseCharacterPlayerController::SetHUDOverlayVisibility(bool bVisible)
 {
-	HUDOverlay->SetVisibility(ESlateVisibility::Visible);
+	if (HUDOverlay)
+	{
+		HUDOverlay->SetVisibility(bVisible ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+	}
 }
 
-void ABaseCharacterPlayerController::HideHUDOverlay()
+void ABaseCharacterPlayerController::SetAmmoWidgetVisibility(bool bVisible)
 {
-	HUDOverlay->SetVisibility(ESlateVisibility::Hidden);
+	if (HUDOverlay)
+	{
+		HUDOverlay->SetAmmoWidgetVisibility(bVisible);
+	}
 }
 
 void ABaseCharacterPlayerController::DisplayInventoryWheel()
@@ -72,7 +79,7 @@ void ABaseCharacterPlayerController::DisplayInventoryWheel()
 
 	if (!InventoryWheelWidget) return;
 
-	HideHUDOverlay();
+	SetHUDOverlayVisibility(false);
 	InventoryWheelWidget->AddToViewport();
 
 	FInputModeGameAndUI InputModeGameAndUI;
@@ -95,7 +102,7 @@ void ABaseCharacterPlayerController::RemoveInventoryWheel()
 {
 	if (!InventoryWheelWidget) return;
 
-	DisplayHUDOverlay();
+	SetHUDOverlayVisibility(true);
 	InventoryWheelWidget->RemoveFromViewport();
 
 	FInputModeGameOnly InputModeGameOnly;

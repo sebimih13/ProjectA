@@ -18,11 +18,14 @@
 
 #include "BaseCharacterPlayerController.h"
 #include "BaseCharacterAnimInstance.h"
+#include "RadarComponent.h"
 #include "Item.h"
 #include "Weapon.h"
 #include "Ammo.h"
 
 // TODO : debug
+#include "HUDOverlayWidget.h"
+
 #include "DrawDebugHelpers.h"
 
 // Sets default values
@@ -37,12 +40,17 @@ ABaseCharacter::ABaseCharacter()
 	CameraBoom->bUsePawnControlRotation = true;
 	CameraBoom->TargetArmLength = 200.f;
 	CameraBoom->SocketOffset = FVector(0.0f, 40.0f, 0.0f);
+	CameraBoom->SetRelativeLocation(FVector(0.0f, 0.0f, 70.0f));
 
 	// Create Follow Camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
 	FollowCamera->FieldOfView = CameraDefaultFOV;
+
+	// Create Player Radar Component
+	RadarComponent = CreateDefaultSubobject<URadarComponent>(TEXT("Radar"));
+	AddOwnedComponent(RadarComponent);
 
 	// Create Left Hand Scene Component
 	LeftHandSceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("LeftHandSceneComponent"));
@@ -98,9 +106,10 @@ void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	// Set Anim Instance Reference
+	// Set References
 	MainAnimInstance = Cast<UBaseCharacterAnimInstance>(GetMesh()->GetAnimInstance());
 	MainPlayerController = Cast<ABaseCharacterPlayerController>(GetController());
+	RadarComponent->InitializeRadar(this);
 
 	// Configure Left Hand Scene Component
 	FAttachmentTransformRules AttachmentRules(EAttachmentRule::KeepRelative, true);
@@ -187,6 +196,9 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	PlayerInputComponent->BindAction("InventoryWheel", IE_Pressed, this, &ABaseCharacter::InventoryWheelButtonPressed);
 	PlayerInputComponent->BindAction("InventoryWheel", IE_Released, this, &ABaseCharacter::InventoryWheelButtonReleased);
 
+	// TODO : TEST
+	PlayerInputComponent->BindAction("Radar", IE_Pressed, this, &ABaseCharacter::RadarButtonPressed);
+
 	// TODO : move to player controller
 	PlayerInputComponent->BindAction("SwitchInput", IE_Pressed, this, &ABaseCharacter::SwitchInput);
 }
@@ -209,6 +221,11 @@ void ABaseCharacter::TurnAtRate(float Rate)
 	if (GetCombatState() == ECombatState::InInventory) return;
 
 	AddControllerYawInput(LookRightLeftRate * Rate);
+
+	if (Rate != 0.0f)
+	{
+		RadarComponent->OnPlayerTurned();
+	}
 }
 
 void ABaseCharacter::LookUpAtRate(float Rate)
@@ -266,10 +283,12 @@ void ABaseCharacter::StartCrouch()
 		if (MainAnimInstance->GetStance() == EStance::Standing)
 		{
 			MainAnimInstance->SetStance(EStance::Crouching);
+			// TODO : GetCharacterMovement()->MaxWalkSpeed = CrouchSpeed;
 		}
 		else
 		{
 			MainAnimInstance->SetStance(EStance::Standing);
+			// TODO : GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 		}
 	}
 }
@@ -345,6 +364,11 @@ void ABaseCharacter::InventoryWheelButtonReleased()
 	EquipWeapon(GetWeaponInInventory(GetSelectedWeaponType()));
 
 	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.0f);
+}
+
+void ABaseCharacter::RadarButtonPressed()
+{
+	RadarComponent->ToggleVisibility(true);
 }
 
 void ABaseCharacter::SwitchInput(FKey Key)
@@ -449,6 +473,8 @@ void ABaseCharacter::UpdateCharacterCamera(float DeltaTime)
 {
 	// TODO : Update Camera Position
 
+	float LastFOV = GetFollowCamera()->FieldOfView;
+
 	// Update Camera FOV
 	if (GetIsAiming())
 	{
@@ -473,6 +499,12 @@ void ABaseCharacter::UpdateCharacterCamera(float DeltaTime)
 	{
 		// TODO : GetCameraBoom()->SetRelativeLocation(FMath::VInterpTo(GetCameraBoom()->GetRelativeLocation(), FVector(0.0f, 0.0f, 70.0f), DeltaTime, CameraLocationInterpSpeed));
 		GetFollowCamera()->FieldOfView = FMath::FInterpTo(GetFollowCamera()->FieldOfView, CameraDefaultFOV, DeltaTime, CameraFOVInterpSpeed);
+	}
+
+	// Update Radar Component if the FOV has changed
+	if (GetFollowCamera()->FieldOfView != LastFOV)
+	{
+		RadarComponent->OnPlayerTurned();
 	}
 
 	// Update Camera Global Saturation Color
@@ -733,11 +765,11 @@ void ABaseCharacter::EquipWeapon(AWeapon* WeaponToEquip)
 	// Display the Ammo Widget if the character have a weapon
 	if (GetSelectedWeaponType() != EWeaponType::Unarmed && GetWeapon())
 	{
-		MainPlayerController->DisplayHUDOverlay();
+		MainPlayerController->SetAmmoWidgetVisibility(true);
 	}
 	else
 	{
-		MainPlayerController->HideHUDOverlay();
+		MainPlayerController->SetAmmoWidgetVisibility(false);
 	}
 
 	SetAnimationOverlay();

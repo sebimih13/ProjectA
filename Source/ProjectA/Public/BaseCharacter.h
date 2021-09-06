@@ -15,6 +15,7 @@ class UCurveFloat;
 
 class UBaseCharacterAnimInstance;
 class ABaseCharacterPlayerController;
+class URadarComponent;
 class AItem;
 class AWeapon;
 class AAmmo;
@@ -114,6 +115,9 @@ protected:
 	void InventoryWheelButtonPressed();
 	void InventoryWheelButtonReleased();
 
+	/** Called for displaying/removing the Radar  */
+	void RadarButtonPressed();
+
 	/** Called for switching inputs */
 	void SwitchInput(FKey Key);
 
@@ -125,6 +129,10 @@ private:
 	/** Follow Camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
+
+	/** Player Radar Component */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Radar", meta = (AllowPrivateAccess = "true"))
+	URadarComponent* RadarComponent;
 
 	/** Scene Component to attach to the Character's hand during reloading */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
@@ -392,6 +400,8 @@ public:
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; };
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; };
 	FORCEINLINE USceneComponent* GetLeftHandSceneComponent() const { return LeftHandSceneComponent; };
+
+	FORCEINLINE ABaseCharacterPlayerController* GetBaseCharacterController() const { return MainPlayerController; };
 
 	FORCEINLINE bool GetIsMoving() const { return bIsMoving; };
 	FORCEINLINE void SetIsMoving(bool State) { bIsMoving = State; };
