@@ -208,12 +208,22 @@ void ABaseCharacter::MoveForward(float Value)
 {
 	const FRotator DirRotator(0.f, Controller->GetControlRotation().Yaw, 0.f);
 	AddMovementInput(UKismetMathLibrary::GetForwardVector(DirRotator), Value);
+
+	if (Value != 0)
+	{
+		RadarComponent->OnPlayerMoved();
+	}
 }
 
 void ABaseCharacter::MoveRight(float Value)
 {
 	const FRotator DirRotator(0.f, Controller->GetControlRotation().Yaw, 0.f);
 	AddMovementInput(UKismetMathLibrary::GetRightVector(DirRotator), Value);
+
+	if (Value != 0)
+	{
+		RadarComponent->OnPlayerMoved();
+	}
 }
 
 void ABaseCharacter::TurnAtRate(float Rate)
